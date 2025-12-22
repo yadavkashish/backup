@@ -10,13 +10,14 @@ export const action = async ({ request }) => {
       rating: body.rating,
       comment: body.comment,
       author: body.author || "Anonymous",
-      status: "PENDING",
-    },
+      status: "PENDING"
+    }
   });
 
   return new Response(JSON.stringify({ ok: true }), {
     headers: {
       "Access-Control-Allow-Origin": "*",
-    },
+      "Content-Type": "application/json"
+    }
   });
 };
