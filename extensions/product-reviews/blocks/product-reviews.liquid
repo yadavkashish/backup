@@ -5,18 +5,19 @@
   "settings": [
     {
       "type": "checkbox",
-      "id": "enable_reviews",
-      "label": "Enable product reviews",
+      "id": "enable",
+      "label": "Enable reviews",
       "default": true
     }
   ]
 }
 {% endschema %}
 
-{% if block.settings.enable_reviews %}
-  <div id="app-reviews-root"
-       data-product-id="{{ product.id }}"
-       data-shop="{{ shop.permanent_domain }}">
+{% if block.settings.enable %}
+  <div
+    id="app-reviews-root"
+    data-product-id="{{ product.id }}"
+    data-shop="{{ shop.permanent_domain }}">
   </div>
 
   <script src="{{ 'reviews.js' | asset_url }}" defer></script>

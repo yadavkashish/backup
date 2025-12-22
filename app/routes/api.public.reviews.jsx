@@ -1,9 +1,7 @@
-// app/routes/api.public.reviews.ts
 import db from "../db.server";
 
 export const loader = async ({ request }) => {
   const url = new URL(request.url);
-
   const productId = url.searchParams.get("productId");
   const shop = url.searchParams.get("shop");
 
@@ -11,10 +9,15 @@ export const loader = async ({ request }) => {
     where: {
       productId,
       shop,
-      status: "PUBLISHED"
+      status: "PUBLISHED",
     },
-    orderBy: { createdAt: "desc" }
+    orderBy: { createdAt: "desc" },
   });
 
-  return Response.json(reviews);
+  return new Response(JSON.stringify(reviews), {
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
 };
