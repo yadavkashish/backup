@@ -1,0 +1,23 @@
+/*
+  Warnings:
+
+  - You are about to drop the `Session` table. If the table is not empty, all the data it contains will be lost.
+
+*/
+-- DropTable
+PRAGMA foreign_keys=off;
+DROP TABLE "Session";
+PRAGMA foreign_keys=on;
+
+-- CreateTable
+CREATE TABLE "Review" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "shop" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "rating" INTEGER NOT NULL,
+    "title" TEXT,
+    "comment" TEXT NOT NULL,
+    "author" TEXT,
+    "approved" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

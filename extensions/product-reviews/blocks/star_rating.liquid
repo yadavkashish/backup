@@ -1,0 +1,23 @@
+{% schema %}
+{
+  "name": "Product Reviews",
+  "target": "section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "enable_reviews",
+      "label": "Enable product reviews",
+      "default": true
+    }
+  ]
+}
+{% endschema %}
+
+{% if block.settings.enable_reviews %}
+  <div id="app-reviews-root"
+       data-product-id="{{ product.id }}"
+       data-shop="{{ shop.permanent_domain }}">
+  </div>
+
+  <script src="{{ 'reviews.js' | asset_url }}" defer></script>
+{% endif %}
