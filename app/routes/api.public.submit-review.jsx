@@ -1,45 +1,7 @@
 import db from "../db.server";
 
-/**
- * IMPORTANT:
- * - Shopify storefront sends CORS preflight (OPTIONS)
- * - If OPTIONS fails → POST never happens
- */
 export const action = async ({ request }) => {
-  // ✅ CORS preflight
-  if (request.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Max-Age": "86400",
-      },
-    });
-  }
-
-  // ❌ Block everything except POST
-  if (request.method !== "POST") {
-    return new Response("Method Not Allowed", {
-      status: 405,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
-  }
-
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response("Invalid JSON", {
-      status: 400,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
-  }
+  const body = await request.json();
 
   const shop = body.shop
     ?.replace(/^https?:\/\//, "")
@@ -56,11 +18,5 @@ export const action = async ({ request }) => {
     },
   });
 
-  return new Response(JSON.stringify({ ok: true }), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
-  });
+  return Response.json({ ok: true });
 };
