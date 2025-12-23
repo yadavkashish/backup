@@ -33,7 +33,7 @@ model Review {
   id           String   @id @default(uuid())
   shop         String
   productId    String
-  productName  String
+  productName  String?
   productImage String?
   rating       Int
   title        String?
