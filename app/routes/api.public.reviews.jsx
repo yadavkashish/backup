@@ -6,7 +6,10 @@ export const loader = async ({ request }) => {
   const shop = url.searchParams.get("shop")?.replace(/\/$/, "");
 
   if (!productId || !shop) {
-    return new Response("Missing params", { status: 400 });
+    return new Response("Missing params", {
+      status: 400,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
   }
 
   const reviews = await db.review.findMany({
