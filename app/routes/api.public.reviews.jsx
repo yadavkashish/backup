@@ -5,6 +5,10 @@ export const loader = async ({ request }) => {
   const productId = url.searchParams.get("productId");
   const shop = url.searchParams.get("shop");
 
+  if (!productId || !shop) {
+    return new Response("Missing productId or shop", { status: 400 });
+  }
+
   const reviews = await db.review.findMany({
     where: {
       productId,
