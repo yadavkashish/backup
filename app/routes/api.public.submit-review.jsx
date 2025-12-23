@@ -1,7 +1,7 @@
 import db from "../db.server";
 
 export const action = async ({ request }) => {
-  // ✅ Handle CORS preflight
+  // Handle CORS preflight
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -13,7 +13,7 @@ export const action = async ({ request }) => {
     });
   }
 
-  // ❌ Reject non-POST safely
+  // Only allow POST
   if (request.method !== "POST") {
     return new Response("Method Not Allowed", { status: 405 });
   }
@@ -21,13 +21,17 @@ export const action = async ({ request }) => {
   let body;
   try {
     body = await request.json();
-  } catch (err) {
-    return new Response("Invalid JSON body", { status: 400 });
+  } catch {
+    return new Response("Invalid JSON", { status: 400 });
   }
+
+  const shop = body.shop
+    ?.replace(/^https?:\/\//, "")
+    ?.replace(/\/$/, "");
 
   await db.review.create({
     data: {
-      shop: body.shop,
+      shop,
       productId: body.productId,
       rating: Number(body.rating),
       comment: body.comment,

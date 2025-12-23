@@ -3,10 +3,10 @@ import db from "../db.server";
 export const loader = async ({ request }) => {
   const url = new URL(request.url);
   const productId = url.searchParams.get("productId");
-  const shop = url.searchParams.get("shop");
+  const shop = url.searchParams.get("shop")?.replace(/\/$/, "");
 
   if (!productId || !shop) {
-    return new Response("Missing productId or shop", { status: 400 });
+    return new Response("Missing params", { status: 400 });
   }
 
   const reviews = await db.review.findMany({
