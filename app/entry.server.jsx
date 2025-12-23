@@ -11,79 +11,41 @@ export default async function handleRequest(
   request,
   responseStatusCode,
   responseHeaders,
-  reactRouterContext
+  reactRouterContext,
 ) {
-  /* ================================
-     ✅ GLOBAL CORS (CRITICAL FIX)
-  ================================ */
-  responseHeaders.set("Access-Control-Allow-Origin", "*");
-  responseHeaders.set(
-    "Access-Control-Allow-Methods",
-    "GET, POST, OPTIONS"
-  );
-  responseHeaders.set(
-    "Access-Control-Allow-Headers",
-    "Content-Type"
-  );
-
-  /* ================================
-     ✅ HANDLE PREFLIGHT EARLY
-  ================================ */
-  if (request.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: responseHeaders,
-    });
-  }
-
-  /* ================================
-     Existing Shopify headers
-  ================================ */
   addDocumentResponseHeaders(request, responseHeaders);
-
   const userAgent = request.headers.get("user-agent");
-  const callbackName = isbot(userAgent ?? "")
-    ? "onAllReady"
-    : "onShellReady";
+  const callbackName = isbot(userAgent ?? "") ? "onAllReady" : "onShellReady";
 
   return new Promise((resolve, reject) => {
     const { pipe, abort } = renderToPipeableStream(
-      <ServerRouter
-        context={reactRouterContext}
-        url={request.url}
-      />,
+      <ServerRouter context={reactRouterContext} url={request.url} />,
       {
         [callbackName]: () => {
           const body = new PassThrough();
-          const stream =
-            createReadableStreamFromReadable(body);
+          const stream = createReadableStreamFromReadable(body);
 
-          responseHeaders.set(
-            "Content-Type",
-            "text/html"
-          );
-
+          responseHeaders.set("Content-Type", "text/html");
           resolve(
             new Response(stream, {
               headers: responseHeaders,
               status: responseStatusCode,
-            })
+            }),
           );
-
           pipe(body);
         },
-
         onShellError(error) {
           reject(error);
         },
-
         onError(error) {
           responseStatusCode = 500;
           console.error(error);
         },
-      }
+      },
     );
 
+    // Automatically timeout the React renderer after 6 seconds, which ensures
+    // React has enough time to flush down the rejected boundary contents
     setTimeout(abort, streamTimeout + 1000);
   });
 }

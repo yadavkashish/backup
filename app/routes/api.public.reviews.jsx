@@ -1,15 +1,12 @@
 import db from "../db.server";
 
-export const loader = async ({ request }) => {
+export async function loader({ request }) {
   const url = new URL(request.url);
   const productId = url.searchParams.get("productId");
   const shop = url.searchParams.get("shop")?.replace(/\/$/, "");
 
   if (!productId || !shop) {
-    return new Response("Missing params", {
-      status: 400,
-      headers: { "Access-Control-Allow-Origin": "*" },
-    });
+    return new Response("Missing params", { status: 400 });
   }
 
   const reviews = await db.review.findMany({
@@ -27,4 +24,4 @@ export const loader = async ({ request }) => {
       "Access-Control-Allow-Origin": "*",
     },
   });
-};
+}

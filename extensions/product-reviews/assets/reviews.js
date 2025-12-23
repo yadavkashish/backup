@@ -7,27 +7,26 @@
 
   const API = "https://judgme.onrender.com";
 
-  // 1️⃣ Load reviews
- const res = await fetch(
+  // Load reviews
+  const res = await fetch(
     `${API}/api/public/reviews?productId=${productId}&shop=${shop}`
   );
   const reviews = await res.json();
 
   root.innerHTML = `
     <h3>Customer Reviews</h3>
-
     ${
       reviews.length === 0
         ? "<p>No reviews yet</p>"
         : reviews
             .map(
-              (r) => `
-          <div>
-            <strong>${r.author}</strong>
-            <div>${"★".repeat(r.rating)}</div>
-            <p>${r.comment}</p>
-          </div>
-        `
+              r => `
+                <div>
+                  <strong>${r.author}</strong>
+                  <div>${"★".repeat(r.rating)}</div>
+                  <p>${r.comment}</p>
+                </div>
+              `
             )
             .join("")
     }
@@ -54,7 +53,7 @@
     const author = document.getElementById("author").value;
     const comment = document.getElementById("comment").value;
 
-    await fetch(`${API}/api/public/submit-review`, {
+    const resp = await fetch(`${API}/api/public/submit-review`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -66,7 +65,8 @@
       }),
     });
 
-    document.getElementById("msg").innerText =
-      "Thanks! Your review will appear after approval.";
+    document.getElementById("msg").innerText = resp.ok
+      ? "Thanks! Your review will appear after approval."
+      : "Failed to submit review";
   };
 })();
