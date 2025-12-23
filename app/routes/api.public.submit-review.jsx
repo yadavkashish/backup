@@ -40,7 +40,8 @@ export async function action({ request }) {
         rating: Number(rating),
         comment,
         author: author || "Anonymous",
-        status: "PENDING",
+        status: "PUBLISHED",
+
       },
     });
 
