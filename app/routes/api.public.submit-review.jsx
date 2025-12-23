@@ -12,24 +12,34 @@ export async function loader({ request }) {
     });
   }
 
-  return new Response("Not Found", { status: 404 });
+  return new Response("Not found", { status: 404 });
 }
 
 export async function action({ request }) {
+  let body;
+
   try {
-    const body = await request.json();
+    body = await request.json();
+  } catch (err) {
+    console.error("❌ Invalid JSON body", err);
+    return new Response("Invalid JSON", { status: 400 });
+  }
 
-    if (!body.shop || !body.productId) {
-      return new Response("Missing data", { status: 400 });
-    }
+  const { shop, productId, rating, comment, author } = body || {};
 
+  if (!shop || !productId || !rating || !comment) {
+    console.error("❌ Missing fields", body);
+    return new Response("Missing fields", { status: 400 });
+  }
+
+  try {
     await db.review.create({
       data: {
-        shop: body.shop.replace(/\/$/, ""),
-        productId: body.productId,
-        rating: Number(body.rating),
-        comment: body.comment,
-        author: body.author || "Anonymous",
+        shop: shop.replace(/\/$/, ""),
+        productId,
+        rating: Number(rating),
+        comment,
+        author: author || "Anonymous",
         status: "PENDING",
       },
     });
@@ -42,7 +52,7 @@ export async function action({ request }) {
       },
     });
   } catch (err) {
-    console.error("SUBMIT ERROR:", err);
-    return new Response("Server error", { status: 500 });
+    console.error("❌ DB ERROR", err);
+    return new Response("Database error", { status: 500 });
   }
 }
