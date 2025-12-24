@@ -1,5 +1,8 @@
 import db from "../db.server";
 
+/* -------------------------------------------------
+   OPTIONS (CORS PREFLIGHT)
+-------------------------------------------------- */
 export async function loader({ request }) {
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -15,18 +18,31 @@ export async function loader({ request }) {
   return new Response("Not found", { status: 404 });
 }
 
+/* -------------------------------------------------
+   SUBMIT REVIEW
+-------------------------------------------------- */
 export async function action({ request }) {
   let body;
 
   try {
     body = await request.json();
-  } catch {
+  } catch (err) {
+    console.error("❌ Invalid JSON", err);
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  const { shop, productId, productName, rating, comment, author } = body || {};
+  const {
+    shop,
+    productId,
+    productName,
+    rating,
+    comment,
+    author,
+  } = body || {};
 
+  /* ---------- VALIDATION ---------- */
   if (!shop || !productId || !rating || !comment) {
+    console.error("❌ Missing fields", body);
     return new Response("Missing fields", { status: 400 });
   }
 
@@ -35,21 +51,24 @@ export async function action({ request }) {
       data: {
         shop: shop.replace(/\/$/, ""),
         productId,
-        productName: productName || null,
+        productName: productName || "Unknown product", // ✅ fallback
         rating: Number(rating),
         comment,
-        author: author || "Anonymous",
-        status: "PUBLISHED",
+        author: author?.trim() || "Anonymous",
+        status: "PUBLISHED", // ✅ instant publish
       },
     });
 
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Content-Type": "application/json",
-      },
-    });
+    return new Response(
+      JSON.stringify({ ok: true }),
+      {
+        status: 200,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      }
+    );
   } catch (err) {
     console.error("❌ DB ERROR", err);
     return new Response("Database error", { status: 500 });

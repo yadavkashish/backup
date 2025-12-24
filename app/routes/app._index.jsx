@@ -47,11 +47,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <Link to="/app/write-review">
-              <button style={styles.buttonPrimary}>
-                Write a review
-              </button>
-            </Link>
+           
           </div>
         </div>
 

@@ -8,6 +8,36 @@
       "id": "enable",
       "label": "Enable reviews",
       "default": true
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Section title",
+      "default": "Customer Reviews"
+    },
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Submit button text",
+      "default": "Submit Review"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Star color",
+      "default": "#facc15"
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "Button color",
+      "default": "#111827"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_author",
+      "label": "Show name field",
+      "default": true
     }
   ]
 }
@@ -17,7 +47,13 @@
   <div
     id="app-reviews-root"
     data-product-id="{{ product.id }}"
-    data-shop="{{ shop.permanent_domain }}">
+    data-product-name="{{ product.title | escape }}"
+    data-shop="{{ shop.permanent_domain }}"
+    data-title="{{ section.settings.title | escape }}"
+    data-button-text="{{ section.settings.button_text | escape }}"
+    data-accent-color="{{ section.settings.accent_color }}"
+    data-button-color="{{ section.settings.button_color }}"
+    data-show-author="{{ section.settings.show_author }}">
   </div>
 
   <script src="{{ 'reviews.js' | asset_url }}" defer></script>
