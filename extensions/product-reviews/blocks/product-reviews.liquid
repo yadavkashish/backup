@@ -13,10 +13,11 @@
 }
 {% endschema %}
 
-{% if block.settings.enable %}
+{% if section.settings.enable %}
   <div
     id="app-reviews-root"
     data-product-id="{{ product.id }}"
+    data-product-name="{{ product.title | escape }}"
     data-shop="{{ shop.permanent_domain }}">
   </div>
 

@@ -21,33 +21,32 @@ export default function AdminDashboard() {
   const { reviews } = useLoaderData();
   const [openProduct, setOpenProduct] = useState(null);
 
-  /* ---------- STATS ---------- */
+  /* ---------- GLOBAL STATS ---------- */
   const totalReviews = reviews.length;
   const avgRating =
     totalReviews === 0
-      ? 0
+      ? "0.0"
       : (
-          reviews.reduce((a, r) => a + r.rating, 0) /
-          totalReviews
+          reviews.reduce((a, r) => a + r.rating, 0) / totalReviews
         ).toFixed(1);
 
-  const thisMonth = new Date().getMonth();
+  const currentMonth = new Date().getMonth();
   const reviewsThisMonth = reviews.filter(
-    (r) => new Date(r.createdAt).getMonth() === thisMonth
+    (r) => new Date(r.createdAt).getMonth() === currentMonth
   ).length;
 
   /* ---------- GROUP BY PRODUCT ---------- */
-  const productsMap = {};
-  reviews.forEach((r) => {
-    if (!productsMap[r.productId]) {
-      productsMap[r.productId] = {
+  const productsMap = reviews.reduce((acc, r) => {
+    if (!acc[r.productId]) {
+      acc[r.productId] = {
         productId: r.productId,
-        productName: r.productName || "Unknown product",
+        productName: r.productName || "Unnamed product",
         reviews: [],
       };
     }
-    productsMap[r.productId].reviews.push(r);
-  });
+    acc[r.productId].reviews.push(r);
+    return acc;
+  }, {});
 
   const products = Object.values(productsMap);
 
@@ -62,11 +61,13 @@ export default function AdminDashboard() {
         <StatCard label="Reviews This Month" value={reviewsThisMonth} />
       </div>
 
-      {/* ---------- PRODUCT TABLE ---------- */}
+      {/* ---------- PRODUCTS ---------- */}
       <div style={styles.card}>
         <h2 style={{ marginBottom: 16 }}>Products</h2>
 
-        {products.length === 0 && <p>No reviews yet</p>}
+        {products.length === 0 && (
+          <p style={styles.muted}>No reviews yet</p>
+        )}
 
         {products.map((p) => {
           const avg =
@@ -78,7 +79,8 @@ export default function AdminDashboard() {
               <div>
                 <strong>{p.productName}</strong>
                 <div style={styles.muted}>
-                  {p.reviews.length} reviews
+                  {p.reviews.length} review
+                  {p.reviews.length !== 1 ? "s" : ""}
                 </div>
               </div>
 
@@ -92,11 +94,13 @@ export default function AdminDashboard() {
                 style={styles.viewBtn}
                 onClick={() =>
                   setOpenProduct(
-                    openProduct === p.productId ? null : p.productId
+                    openProduct === p.productId
+                      ? null
+                      : p.productId
                   )
                 }
               >
-                View
+                {openProduct === p.productId ? "Hide" : "View"}
               </button>
 
               {/* ---------- EXPANDED REVIEWS ---------- */}
@@ -109,7 +113,7 @@ export default function AdminDashboard() {
                         {"★".repeat(r.rating)}
                         {"☆".repeat(5 - r.rating)}
                       </div>
-                      <p>{r.comment}</p>
+                      <p style={{ marginTop: 4 }}>{r.comment}</p>
                       <span style={styles.muted}>
                         {new Date(r.createdAt).toDateString()}
                       </span>

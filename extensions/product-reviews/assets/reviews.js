@@ -3,17 +3,22 @@
   if (!root) return;
 
   const productId = root.dataset.productId;
+  const productName = root.dataset.productName;
   const shop = root.dataset.shop.replace(/\/$/, "");
   const API = "https://judgme.onrender.com";
 
+  // 1️⃣ Load reviews
   const res = await fetch(
     `${API}/api/public/reviews?productId=${productId}&shop=${shop}`
   );
   const reviews = await res.json();
 
   root.innerHTML = `
-    <div style="max-width:600px;margin-top:32px;font-family:Arial,sans-serif">
-      <h3 style="font-size:22px;margin-bottom:16px">Customer Reviews</h3>
+    <div style="max-width:640px;margin-top:32px;font-family:Arial,sans-serif">
+      <h3 style="font-size:22px;margin-bottom:4px">Customer Reviews</h3>
+      <p style="color:#6b7280;margin-bottom:16px">
+        Reviews for <strong>${productName}</strong>
+      </p>
 
       ${
         reviews.length === 0
@@ -33,10 +38,10 @@
               .join("")
       }
 
-      <div style="margin-top:24px;padding-top:16px;border-top:2px solid #e5e7eb">
+      <div style="margin-top:28px;padding-top:20px;border-top:2px solid #e5e7eb">
         <h4 style="font-size:18px;margin-bottom:12px">Write a review</h4>
 
-        <div id="stars" style="font-size:24px;color:#d1d5db;cursor:pointer">
+        <div id="stars" style="font-size:26px;color:#d1d5db;cursor:pointer">
           ${[1,2,3,4,5].map(i => `<span data-v="${i}">★</span>`).join("")}
         </div>
 
@@ -54,7 +59,7 @@
 
         <button
           id="submitReview"
-          style="margin-top:12px;background:#111827;color:white;padding:10px 16px;border:none;border-radius:6px;cursor:pointer"
+          style="margin-top:14px;background:#111827;color:white;padding:10px 18px;border:none;border-radius:6px;cursor:pointer"
         >
           Submit Review
         </button>
@@ -67,17 +72,20 @@
   let rating = 5;
   const stars = root.querySelectorAll("#stars span");
 
+  const paintStars = () => {
+    stars.forEach(s => {
+      s.style.color = s.dataset.v <= rating ? "#facc15" : "#d1d5db";
+    });
+  };
+
   stars.forEach(star => {
     star.onclick = () => {
       rating = Number(star.dataset.v);
-      stars.forEach(s => {
-        s.style.color = s.dataset.v <= rating ? "#facc15" : "#d1d5db";
-      });
+      paintStars();
     };
   });
 
-  // default fill
-  stars.forEach(s => (s.style.color = "#facc15"));
+  paintStars();
 
   document.getElementById("submitReview").onclick = async () => {
     const author = document.getElementById("author").value;
@@ -94,6 +102,7 @@
       body: JSON.stringify({
         shop,
         productId,
+        productName,
         rating,
         author,
         comment,
@@ -102,7 +111,7 @@
 
     if (resp.ok) {
       document.getElementById("msg").innerText =
-        "Thanks for your review!";
+        "Thanks! Your review is now live 🎉";
       document.getElementById("comment").value = "";
     } else {
       alert("Failed to submit review");

@@ -20,15 +20,13 @@ export async function action({ request }) {
 
   try {
     body = await request.json();
-  } catch (err) {
-    console.error("❌ Invalid JSON body", err);
+  } catch {
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  const { shop, productId, rating, comment, author } = body || {};
+  const { shop, productId, productName, rating, comment, author } = body || {};
 
   if (!shop || !productId || !rating || !comment) {
-    console.error("❌ Missing fields", body);
     return new Response("Missing fields", { status: 400 });
   }
 
@@ -37,11 +35,11 @@ export async function action({ request }) {
       data: {
         shop: shop.replace(/\/$/, ""),
         productId,
+        productName: productName || null,
         rating: Number(rating),
         comment,
         author: author || "Anonymous",
         status: "PUBLISHED",
-
       },
     });
 
