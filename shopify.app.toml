@@ -26,5 +26,4 @@ scopes = "write_products, write_themes"
 
 [auth]
 redirect_urls = [ "https://judgme.onrender.com" ]
-[env]
-DATABASE_URL = "postgresql://neondb_owner:npg_HzgQ9L2vOaZT@ep-winter-rain-a1wgc8xt-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
