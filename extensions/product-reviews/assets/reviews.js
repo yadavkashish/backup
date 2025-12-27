@@ -5,7 +5,7 @@
   /* ---------------- SETTINGS FROM ADMIN ---------------- */
   const productId = root.dataset.productId;
   const productName = root.dataset.productName;
-  const shop = root.dataset.shop.replace(/\/$/, "");
+  const shop = root.dataset.shop;
 
   const title = root.dataset.title || "Customer Reviews";
   const buttonText = root.dataset.buttonText || "Submit Review";

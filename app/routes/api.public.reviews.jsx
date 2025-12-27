@@ -1,3 +1,4 @@
+// app/routes/api.public.reviews.jsx
 import db from "../db.server";
 
 export async function loader({ request }) {
@@ -11,9 +12,19 @@ export async function loader({ request }) {
 
   const reviews = await db.review.findMany({
     where: {
-      productId,
-      shop,
+      productId: String(productId),
+      shop: shop,
       status: "PUBLISHED",
+    },
+    // This is the critical part you are likely missing:
+    select: {
+      id: true,
+      author: true,
+      rating: true,
+      comment: true,
+      createdAt: true,
+      reply: true,     // <--- MAKE SURE THIS IS HERE
+      replyDate: true, // <--- Add this if you want to show when you replied
     },
     orderBy: { createdAt: "desc" },
   });
@@ -21,7 +32,7 @@ export async function loader({ request }) {
   return new Response(JSON.stringify(reviews), {
     headers: {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": "*", // Required for Shopify storefront access
     },
   });
 }
