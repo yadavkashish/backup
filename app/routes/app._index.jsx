@@ -47,8 +47,8 @@ export default function HomePage() {
                     <Star
                       key={i}
                       size={18}
-                      fill={i <= Math.round(avg) ? "#facc15" : "none"}
-                      color={i <= Math.round(avg) ? "#facc15" : "#475569"}
+                      fill={i <= Math.round(avg) ? "#f59e0b" : "none"}
+                      color={i <= Math.round(avg) ? "#f59e0b" : "#cbd5e1"}
                     />
                   ))}
                 </div>
@@ -93,8 +93,8 @@ export default function HomePage() {
                       <Star 
                         key={i} 
                         size={14} 
-                        fill={i <= r.rating ? "#facc15" : "none"} 
-                        color={i <= r.rating ? "#facc15" : "#475569"} 
+                        fill={i <= r.rating ? "#f59e0b" : "none"} 
+                        color={i <= r.rating ? "#f59e0b" : "#e2e8f0"} 
                       />
                     ))}
                   </div>
@@ -121,12 +121,12 @@ export default function HomePage() {
   );
 }
 
-/* ---------------- STYLES ---------------- */
+/* ---------------- LIGHT THEME STYLES ---------------- */
 const styles = {
   container: {
     fontFamily: "'Inter', -apple-system, sans-serif",
-    backgroundColor: "#0f172a", // Slate 900
-    color: "#f8fafc", // Slate 50
+    backgroundColor: "#f8fafc", // Slate 50
+    color: "#0f172a", // Slate 900
     minHeight: "100vh",
     padding: "60px 20px",
   },
@@ -135,12 +135,12 @@ const styles = {
     margin: "0 auto",
   },
   statsCard: {
-    backgroundColor: "#1e293b", // Slate 800
+    backgroundColor: "#ffffff",
     borderRadius: "20px",
     padding: "32px",
-    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.03)",
     marginBottom: "48px",
-    border: "1px solid #334155", // Slate 700
+    border: "1px solid #e2e8f0", 
   },
   statsContent: {
     display: "flex",
@@ -149,18 +149,18 @@ const styles = {
     flexWrap: "wrap",
     gap: "24px",
   },
-  title: { fontSize: "30px", fontWeight: "800", margin: "0 0 8px 0", letterSpacing: "-0.5px" },
-  subtitle: { color: "#94a3b8", fontSize: "16px", margin: 0 },
+  title: { fontSize: "30px", fontWeight: "800", margin: "0 0 8px 0", letterSpacing: "-0.5px", color: "#1e293b" },
+  subtitle: { color: "#64748b", fontSize: "16px", margin: 0 },
   ratingBox: {
     display: "flex",
     alignItems: "center",
     gap: "24px",
-    backgroundColor: "#0f172a",
+    backgroundColor: "#f1f5f9", // Slate 100
     padding: "20px 28px",
     borderRadius: "16px",
-    border: "1px solid #334155",
+    border: "1px solid #e2e8f0",
   },
-  ratingScore: { fontSize: "48px", fontWeight: "800", color: "#fff" },
+  ratingScore: { fontSize: "48px", fontWeight: "800", color: "#0f172a" },
   ratingMeta: { display: "flex", flexDirection: "column", gap: "6px" },
   starsRow: { display: "flex", gap: "3px" },
   totalLabel: { 
@@ -170,14 +170,15 @@ const styles = {
     display: "flex", 
     alignItems: "center" 
   },
-  sectionTitle: { fontSize: "14px", fontWeight: "700", color: "#64748b", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "20px" },
+  sectionTitle: { fontSize: "12px", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "20px" },
   listContainer: { display: "flex", flexDirection: "column", gap: "20px" },
-  emptyCard: { textAlign: "center", padding: "60px", color: "#64748b", backgroundColor: "#1e293b", borderRadius: "16px", border: "1px dashed #334155" },
+  emptyCard: { textAlign: "center", padding: "60px", color: "#94a3b8", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px dashed #e2e8f0" },
   reviewCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: "#ffffff",
     borderRadius: "16px",
-    border: "1px solid #334155",
+    border: "1px solid #e2e8f0",
     transition: "transform 0.2s ease",
+    boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05)",
   },
   reviewMain: { padding: "28px" },
   authorSection: { display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" },
@@ -186,26 +187,27 @@ const styles = {
     backgroundColor: "#3b82f6", color: "#fff",
     display: "flex", alignItems: "center", justifyContent: "center",
     fontWeight: "700", fontSize: "18px",
-    boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
   },
   authorHeader: { display: "flex", alignItems: "center", gap: "10px" },
-  authorName: { fontWeight: "700", fontSize: "16px", color: "#f1f5f9" },
+  authorName: { fontWeight: "700", fontSize: "16px", color: "#1e293b" },
   verifiedBadge: {
     display: "flex", alignItems: "center", gap: "4px",
-    fontSize: "10px", fontWeight: "700", color: "#10b981",
-    backgroundColor: "rgba(16, 185, 129, 0.1)", padding: "2px 8px", borderRadius: "6px",
+    fontSize: "10px", fontWeight: "700", color: "#059669",
+    backgroundColor: "#ecfdf5", padding: "2px 8px", borderRadius: "6px",
     textTransform: "uppercase",
   },
-  productLink: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#94a3b8", marginTop: "4px" },
-  dateText: { fontSize: "13px", color: "#475569", marginLeft: "auto" },
+  productLink: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#64748b", marginTop: "4px" },
+  dateText: { fontSize: "13px", color: "#94a3b8", marginLeft: "auto" },
   starRowSmall: { display: "flex", gap: "3px", marginBottom: "14px" },
-  commentText: { fontSize: "15px", lineHeight: "1.7", color: "#cbd5e1", margin: "0 0 20px 0" },
+  commentText: { fontSize: "15px", lineHeight: "1.7", color: "#475569", margin: "0 0 20px 0" },
   replyBox: { 
-    backgroundColor: "#0f172a", 
+    backgroundColor: "#f8fafc", 
     borderLeft: "4px solid #3b82f6", 
     borderRadius: "8px", 
     padding: "16px 20px", 
-    marginTop: "10px" 
+    marginTop: "10px",
+    border: "1px solid #e2e8f0",
+    borderLeftWidth: "4px"
   },
   replyHeader: { 
     display: "flex", 
@@ -213,10 +215,10 @@ const styles = {
     gap: "8px", 
     fontSize: "11px", 
     fontWeight: "800", 
-    color: "#3b82f6", 
+    color: "#2563eb", 
     textTransform: "uppercase", 
     letterSpacing: "0.5px",
     marginBottom: "8px" 
   },
-  replyContent: { fontSize: "14px", color: "#94a3b8", margin: 0, lineHeight: "1.6", fontStyle: "italic" },
+  replyContent: { fontSize: "14px", color: "#64748b", margin: 0, lineHeight: "1.6", fontStyle: "italic" },
 };

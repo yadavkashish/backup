@@ -1,9 +1,12 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "336ed661fb664102110d737e5350745d"
+client_id = "98eccc305b95a11d2b9dbec18a0681d1"
 name = "judgeMe"
-application_url = "https://example.com"
+application_url = "https://judgme.onrender.com"
 embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
 
 [webhooks]
 api_version = "2026-01"
@@ -13,7 +16,4 @@ api_version = "2026-01"
 scopes = "write_products"
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
-
-[build]
-automatically_update_urls_on_dev = true
+redirect_urls = [ "https://judgme.onrender.com" ]

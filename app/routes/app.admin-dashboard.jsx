@@ -16,7 +16,7 @@ export const loader = async ({ request }) => {
   return { reviews };
 };
 
-/* ---------------- ACTION (Handle Replies) ---------------- */
+/* ---------------- ACTION ---------------- */
 export const action = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const formData = await request.formData();
@@ -43,7 +43,6 @@ export default function AdminDashboard() {
   const [replyingTo, setReplyingTo] = useState(null);
   const [tempReply, setTempReply] = useState("");
 
-  /* ---------- GLOBAL STATS ---------- */
   const totalReviews = reviews.length;
   const avgRating = totalReviews === 0 
     ? "0.0" 
@@ -54,7 +53,6 @@ export default function AdminDashboard() {
     (r) => new Date(r.createdAt).getMonth() === currentMonth
   ).length;
 
-  /* ---------- GROUP BY PRODUCT ---------- */
   const productsMap = reviews.reduce((acc, r) => {
     if (!acc[r.productId]) {
       acc[r.productId] = {
@@ -126,7 +124,7 @@ export default function AdminDashboard() {
 
                     <div style={{ flex: 1, textAlign: 'center' }}>
                       <div style={styles.ratingText}>
-                        <span style={{ color: "#facc15" }}>★</span> {avg.toFixed(1)}
+                        <span style={{ color: "#f59e0b" }}>★</span> {avg.toFixed(1)}
                       </div>
                     </div>
 
@@ -140,7 +138,6 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* ---------- EXPANDED REVIEWS ---------- */}
                   {isOpen && (
                     <div style={styles.reviewList}>
                       {p.reviews.map((r) => (
@@ -154,7 +151,6 @@ export default function AdminDashboard() {
                           </div>
                           <p style={styles.comment}>{r.comment}</p>
 
-                          {/* ---------- REPLY SECTION ---------- */}
                           <div style={styles.replySection}>
                             {replyingTo === r.id ? (
                               <div style={styles.replyInputWrapper}>
@@ -204,8 +200,6 @@ export default function AdminDashboard() {
   );
 }
 
-/* ---------------- COMPONENTS ---------------- */
-
 function StatCard({ label, value, accent }) {
   return (
     <div style={styles.statCard}>
@@ -216,67 +210,67 @@ function StatCard({ label, value, accent }) {
   );
 }
 
-/* ---------------- STYLES ---------------- */
-
+/* ---------------- LIGHT THEME STYLES ---------------- */
 const styles = {
   container: {
     padding: "40px 80px",
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-    backgroundColor: "#0f172a",
-    color: "#f8fafc",
+    backgroundColor: "#f8fafc", // Light background
+    color: "#0f172a", // Dark text
     minHeight: "100vh",
   },
   header: { marginBottom: "40px" },
-  title: { fontSize: "32px", fontWeight: "800", margin: "0 0 8px 0", letterSpacing: "-0.5px" },
-  subtitle: { color: "#94a3b8", fontSize: "16px", margin: 0 },
+  title: { fontSize: "32px", fontWeight: "800", margin: "0 0 8px 0", letterSpacing: "-0.5px", color: "#1e293b" },
+  subtitle: { color: "#64748b", fontSize: "16px", margin: 0 },
   statsRow: { display: "flex", gap: "24px", marginBottom: "48px" },
   statCard: {
     position: "relative",
-    backgroundColor: "#1e293b",
+    backgroundColor: "#ffffff",
     padding: "24px",
     borderRadius: "12px",
     flex: 1,
-    border: "1px solid #334155",
+    border: "1px solid #e2e8f0",
     overflow: "hidden",
+    boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
   },
   statAccent: { position: "absolute", top: 0, left: 0, width: "4px", height: "100%" },
-  statLabel: { color: "#94a3b8", fontSize: "14px", fontWeight: "500", textTransform: "uppercase", letterSpacing: "0.5px" },
-  statValue: { fontSize: "32px", fontWeight: "700", marginTop: "8px", color: "#fff" },
+  statLabel: { color: "#64748b", fontSize: "14px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" },
+  statValue: { fontSize: "32px", fontWeight: "700", marginTop: "8px", color: "#0f172a" },
   card: {
-    backgroundColor: "#1e293b",
+    backgroundColor: "#ffffff",
     borderRadius: "16px",
-    border: "1px solid #334155",
-    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.3)",
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
   },
   cardHeader: {
     padding: "24px 32px",
-    borderBottom: "1px solid #334155",
+    borderBottom: "1px solid #e2e8f0",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  cardTitle: { fontSize: "20px", fontWeight: "600", margin: 0 },
-  badge: { backgroundColor: "#334155", color: "#cbd5e1", padding: "4px 12px", borderRadius: "99px", fontSize: "12px", fontWeight: "500" },
+  cardTitle: { fontSize: "20px", fontWeight: "600", margin: 0, color: "#1e293b" },
+  badge: { backgroundColor: "#f1f5f9", color: "#475569", padding: "4px 12px", borderRadius: "99px", fontSize: "12px", fontWeight: "600" },
   table: { width: "100%" },
   tableHeader: {
     display: "flex",
     padding: "16px 32px",
-    color: "#64748b",
+    color: "#94a3b8",
     fontSize: "12px",
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: "1px",
-    borderBottom: "1px solid #334155",
+    borderBottom: "1px solid #f1f5f9",
   },
-  rowWrapper: { borderBottom: "1px solid #334155" },
+  rowWrapper: { borderBottom: "1px solid #f1f5f9" },
   productRow: { display: "flex", padding: "24px 32px", alignItems: "center" },
-  productName: { fontSize: "16px", fontWeight: "600", color: "#f1f5f9" },
-  productSub: { fontSize: "13px", color: "#64748b", marginTop: "4px" },
-  ratingText: { fontSize: "16px", fontWeight: "600" },
+  productName: { fontSize: "16px", fontWeight: "600", color: "#1e293b" },
+  productSub: { fontSize: "13px", color: "#94a3b8", marginTop: "4px" },
+  ratingText: { fontSize: "16px", fontWeight: "600", color: "#1e293b" },
   viewBtn: {
     backgroundColor: "transparent",
-    color: "#94a3b8",
-    border: "1px solid #475569",
+    color: "#64748b",
+    border: "1px solid #e2e8f0",
     padding: "8px 16px",
     borderRadius: "8px",
     cursor: "pointer",
@@ -285,30 +279,29 @@ const styles = {
     transition: "all 0.2s",
   },
   viewBtnActive: {
-    backgroundColor: "#f1f5f9",
-    color: "#0f172a",
-    border: "1px solid #f1f5f9",
+    backgroundColor: "#1e293b",
+    color: "#ffffff",
+    border: "1px solid #1e293b",
     padding: "8px 16px",
     borderRadius: "8px",
     cursor: "pointer",
     fontSize: "13px",
     fontWeight: "600",
   },
-  reviewList: { backgroundColor: "#0f172a", padding: "0 32px 24px 32px" },
-  reviewItem: { padding: "20px 0", borderBottom: "1px solid #1e293b" },
+  reviewList: { backgroundColor: "#f8fafc", padding: "0 32px 24px 32px" },
+  reviewItem: { padding: "20px 0", borderBottom: "1px solid #e2e8f0" },
   reviewHeader: { display: "flex", justifyContent: "space-between", marginBottom: "4px" },
-  author: { fontWeight: "600", color: "#f1f5f9", fontSize: "14px" },
-  date: { fontSize: "12px", color: "#475569" },
-  starRow: { color: "#facc15", fontSize: "12px", marginBottom: "8px" },
-  comment: { fontSize: "14px", color: "#94a3b8", lineHeight: "1.6", margin: "0 0 16px 0" },
-  emptyState: { padding: "48px", textAlign: "center", color: "#64748b" },
+  author: { fontWeight: "600", color: "#1e293b", fontSize: "14px" },
+  date: { fontSize: "12px", color: "#94a3b8" },
+  starRow: { color: "#f59e0b", fontSize: "12px", marginBottom: "8px" },
+  comment: { fontSize: "14px", color: "#475569", lineHeight: "1.6", margin: "0 0 16px 0" },
+  emptyState: { padding: "48px", textAlign: "center", color: "#94a3b8" },
   
-  /* Reply Styles */
   replySection: { marginTop: "12px" },
   replyBtn: {
     backgroundColor: "transparent",
-    color: "#3b82f6",
-    border: "1px solid #3b82f6",
+    color: "#2563eb",
+    border: "1px solid #bfdbfe",
     padding: "6px 12px",
     borderRadius: "6px",
     cursor: "pointer",
@@ -317,26 +310,26 @@ const styles = {
   },
   existingReply: {
     padding: "12px 16px",
-    backgroundColor: "#1e293b",
+    backgroundColor: "#f1f5f9",
     borderRadius: "8px",
     borderLeft: "3px solid #3b82f6"
   },
-  replyLabel: { fontSize: "11px", fontWeight: "700", color: "#3b82f6", textTransform: "uppercase", marginBottom: "4px" },
-  replyContent: { fontSize: "14px", color: "#cbd5e1", margin: "0 0 8px 0", fontStyle: "italic" },
-  editReplyBtn: { background: "none", border: "none", color: "#64748b", fontSize: "12px", cursor: "pointer", padding: 0, textDecoration: "underline" },
+  replyLabel: { fontSize: "11px", fontWeight: "700", color: "#2563eb", textTransform: "uppercase", marginBottom: "4px" },
+  replyContent: { fontSize: "14px", color: "#334155", margin: "0 0 8px 0", fontStyle: "italic" },
+  editReplyBtn: { background: "none", border: "none", color: "#94a3b8", fontSize: "12px", cursor: "pointer", padding: 0, textDecoration: "underline" },
   replyInputWrapper: { display: "flex", flexDirection: "column", gap: "10px" },
   replyTextarea: {
     width: "100%",
     minHeight: "80px",
-    backgroundColor: "#1e293b",
-    color: "#fff",
-    border: "1px solid #334155",
+    backgroundColor: "#ffffff",
+    color: "#1e293b",
+    border: "1px solid #cbd5e1",
     borderRadius: "8px",
     padding: "12px",
     fontSize: "14px",
     outline: "none"
   },
   replyActions: { display: "flex", gap: "10px" },
-  saveBtn: { backgroundColor: "#3b82f6", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", fontWeight: "600", cursor: "pointer" },
-  cancelBtn: { backgroundColor: "transparent", color: "#94a3b8", border: "none", cursor: "pointer", fontSize: "14px" }
+  saveBtn: { backgroundColor: "#2563eb", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", fontWeight: "600", cursor: "pointer" },
+  cancelBtn: { backgroundColor: "transparent", color: "#64748b", border: "none", cursor: "pointer", fontSize: "14px" }
 };
