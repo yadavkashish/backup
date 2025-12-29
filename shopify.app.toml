@@ -1,6 +1,6 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "66266bdf32e75472ea62e98d37e652fe"
+client_id = "98eccc305b95a11d2b9dbec18a0681d1"
 name = "judgeme"
 application_url = "https://judgme.onrender.com"
 embedded = true
@@ -22,8 +22,12 @@ api_version = "2026-01"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products, write_themes"
+scopes = "read_products, write_themes, read_orders, write_customers"
+
 
 [auth]
-redirect_urls = [ "https://judgme.onrender.com" ]
+redirect_urls = [
+  "https://judgme.onrender.com",
+  "https://judgme.onrender.com/auth/callback"
+]
 
