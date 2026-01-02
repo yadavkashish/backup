@@ -1,13 +1,12 @@
-// Keep your existing generator and datasource
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
-
 
 model Session {
   id                  String    @id
@@ -29,7 +28,6 @@ model Session {
   refreshTokenExpires DateTime?
 }
 
-// ADD THIS: The Review Model
 model Review {
   id           String   @id @default(uuid())
   shop         String
@@ -43,7 +41,4 @@ model Review {
   email        String?
   status       String   @default("PENDING")
   createdAt    DateTime @default(now())
-  reply       String?  
-  replyDate   DateTime?
 }
-

@@ -31,7 +31,7 @@ scopes = "read_products, write_themes, read_orders, write_customers"
 
 [auth]
 redirect_urls = [
-  "https://judgme.onrender.com",
+  "https://judgme.onrender.com/api/auth",
   "https://judgme.onrender.com/auth/callback"
 ]
 

@@ -4,18 +4,46 @@ import db from "../db.server";
    OPTIONS (CORS PREFLIGHT)
 -------------------------------------------------- */
 export async function loader({ request }) {
+  // Define standard CORS headers
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+
+  // 1. Handle Preflight
   if (request.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  // 2. Handle the actual GET request (fetching reviews)
+  const url = new URL(request.url);
+  const productId = url.searchParams.get("productId");
+  const shop = url.searchParams.get("shop");
+
+  if (!productId || !shop) {
+    return new Response(JSON.stringify({ error: "Missing params" }), { 
+      status: 400, 
+      headers: corsHeaders 
     });
   }
 
-  return new Response("Not found", { status: 404 });
+  try {
+    const reviews = await db.review.findMany({
+      where: { productId, shop: shop.replace(/\/$/, "") },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return new Response(JSON.stringify(reviews), {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    return new Response("Internal Error", { status: 500, headers: corsHeaders });
+  }
 }
 
 /* -------------------------------------------------

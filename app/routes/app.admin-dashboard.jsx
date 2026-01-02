@@ -3,333 +3,192 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { useState } from "react";
 
-/* ---------------- LOADER ---------------- */
+/* ---------------- LOADER & ACTION (Standard Prisma Logic) ---------------- */
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop.replace(/\/$/, "");
-
   const reviews = await db.review.findMany({
     where: { shop },
     orderBy: { createdAt: "desc" },
   });
-
   return { reviews };
 };
 
-/* ---------------- ACTION ---------------- */
 export const action = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const formData = await request.formData();
   const reviewId = formData.get("reviewId");
   const reply = formData.get("reply");
-
   try {
-    await db.review.update({
-      where: { id: reviewId },
-      data: { reply },
-    });
+    await db.review.update({ where: { id: reviewId }, data: { reply } });
     return { ok: true };
   } catch (err) {
-    console.error("Reply Error:", err);
     return { ok: false, error: "Failed to save reply" };
   }
 };
 
-/* ---------------- PAGE ---------------- */
+/* ---------------- MAIN PAGE ---------------- */
 export default function AdminDashboard() {
   const { reviews } = useLoaderData();
+  const [selectedReview, setSelectedReview] = useState(null);
+
+  return (
+    <div style={styles.layout}>
+      {/* 1. SIDEBAR */}
+      <aside style={styles.sidebar}>
+        <div style={styles.logo}>ReviewsApp</div>
+        <nav style={{ flex: 1 }}>
+          <div style={styles.navItem}>Dashboard</div>
+          <div style={styles.navItemActive}>Reviews Management</div>
+          <div style={styles.navItem}>Review Form</div>
+          <div style={styles.navItem}>Widget Customization</div>
+        </nav>
+        <div style={styles.sidebarFooter}>User</div>
+      </aside>
+
+      {/* 2. MAIN CONTENT */}
+      <main style={styles.main}>
+        <div style={styles.container}>
+          <header style={styles.header}>
+            <div>
+              <h1 style={styles.title}>Reviews Management</h1>
+              <p style={styles.subtitle}>Monitor and manage your customer reviews.</p>
+            </div>
+            <input type="text" placeholder="Search Form Name" style={styles.searchInput} />
+          </header>
+
+          <div style={styles.card}>
+            <table style={styles.table}>
+              <thead>
+                <tr style={styles.theadRow}>
+                  <th style={styles.th}><input type="checkbox" /></th>
+                  <th style={styles.th}>FORM NAME</th>
+                  <th style={styles.th}>RATING</th>
+                  <th style={styles.th}>REVIEW</th>
+                  <th style={styles.th}>DATE</th>
+                  <th style={styles.th}>ACTION</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reviews.map((r) => (
+                  <tr key={r.id} style={styles.tr}>
+                    <td style={styles.td}><input type="checkbox" /></td>
+                    <td style={styles.td}>
+                      <div style={styles.productCell}>
+                        <div style={styles.iconCircle}>📦</div>
+                        {r.productName}
+                      </div>
+                    </td>
+                    <td style={styles.td}>
+                      <span style={{ color: "#f59e0b" }}>{"★".repeat(r.rating)}</span>
+                    </td>
+                    <td style={{ ...styles.td, color: "#64748b" }}>
+                      {r.comment.substring(0, 35)}...
+                    </td>
+                    <td style={styles.td}>{new Date(r.createdAt).toLocaleDateString()}</td>
+                    <td style={styles.td}>
+                      <button style={styles.actionBtn} onClick={() => setSelectedReview(r)}>⋮</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+
+      {/* 3. MODAL (Conditional Rendering) */}
+      {selectedReview && (
+        <ReviewDetailsModal 
+          review={selectedReview} 
+          onClose={() => setSelectedReview(null)} 
+        />
+      )}
+    </div>
+  );
+}
+
+/* ---------------- MODAL COMPONENT ---------------- */
+function ReviewDetailsModal({ review, onClose }) {
   const fetcher = useFetcher();
-  const [openProduct, setOpenProduct] = useState(null);
-  const [replyingTo, setReplyingTo] = useState(null);
-  const [tempReply, setTempReply] = useState("");
+  const [replyText, setReplyText] = useState(review.reply || "");
 
-  const totalReviews = reviews.length;
-  const avgRating = totalReviews === 0 
-    ? "0.0" 
-    : (reviews.reduce((a, r) => a + r.rating, 0) / totalReviews).toFixed(1);
-
-  const currentMonth = new Date().getMonth();
-  const reviewsThisMonth = reviews.filter(
-    (r) => new Date(r.createdAt).getMonth() === currentMonth
-  ).length;
-
-  const productsMap = reviews.reduce((acc, r) => {
-    if (!acc[r.productId]) {
-      acc[r.productId] = {
-        productId: r.productId,
-        productName: r.productName || "Unnamed product",
-        reviews: [],
-      };
-    }
-    acc[r.productId].reviews.push(r);
-    return acc;
-  }, {});
-
-  const products = Object.values(productsMap);
-
-  const handleSaveReply = (reviewId) => {
-    fetcher.submit(
-      { reviewId, reply: tempReply },
-      { method: "POST" }
-    );
-    setReplyingTo(null);
-    setTempReply("");
+  const handleSave = () => {
+    fetcher.submit({ reviewId: review.id, reply: replyText }, { method: "POST" });
   };
 
   return (
-    <div style={styles.container}>
-      {/* ---------- HEADER ---------- */}
-      <header style={styles.header}>
-        <div>
-          <h1 style={styles.title}>Reviews Dashboard</h1>
-          <p style={styles.subtitle}>Overview of your store's customer feedback and ratings.</p>
+    <div style={styles.overlay} onClick={onClose}>
+      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.modalHeader}>
+          <h2 style={{ margin: 0, fontSize: '18px' }}>{review.productName}</h2>
+          <span style={{ color: '#94a3b8', fontSize: '12px' }}>
+            Date: {new Date(review.createdAt).toLocaleDateString()}
+          </span>
         </div>
-      </header>
+        
+        <div style={styles.modalBody}>
+          <label style={styles.label}>Review</label>
+          <p style={styles.reviewText}>{review.comment}</p>
+          
+          <div style={styles.ratingBox}>Rating: {review.rating}/5</div>
 
-      {/* ---------- STATS ---------- */}
-      <div style={styles.statsRow}>
-        <StatCard label="Total Reviews" value={totalReviews} accent="#3b82f6" />
-        <StatCard label="Average Rating" value={`${avgRating} / 5.0`} accent="#f59e0b" />
-        <StatCard label="This Month" value={`+${reviewsThisMonth}`} accent="#10b981" />
-      </div>
-
-      {/* ---------- MAIN CARD ---------- */}
-      <div style={styles.card}>
-        <div style={styles.cardHeader}>
-          <h2 style={styles.cardTitle}>Product Breakdown</h2>
-          <span style={styles.badge}>{products.length} Products</span>
-        </div>
-
-        {products.length === 0 ? (
-          <div style={styles.emptyState}>No reviews found yet.</div>
-        ) : (
-          <div style={styles.table}>
-            <div style={styles.tableHeader}>
-              <span style={{ flex: 2 }}>Product</span>
-              <span style={{ flex: 1, textAlign: 'center' }}>Rating</span>
-              <span style={{ flex: 1, textAlign: 'right' }}>Action</span>
+          <div style={styles.replyArea}>
+            <label style={styles.label}>Reply</label>
+            <textarea 
+              style={styles.textarea} 
+              value={replyText} 
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Type your response..."
+            />
+            <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+              <button style={styles.saveBtn} onClick={handleSave}>
+                {fetcher.state === "submitting" ? "Saving..." : "Save Reply"}
+              </button>
+              <button style={styles.cancelBtn} onClick={onClose}>Cancel</button>
             </div>
-
-            {products.map((p) => {
-              const avg = p.reviews.reduce((a, r) => a + r.rating, 0) / p.reviews.length;
-              const isOpen = openProduct === p.productId;
-
-              return (
-                <div key={p.productId} style={styles.rowWrapper}>
-                  <div style={styles.productRow}>
-                    <div style={{ flex: 2 }}>
-                      <div style={styles.productName}>{p.productName}</div>
-                      <div style={styles.productSub}>{p.reviews.length} total reviews</div>
-                    </div>
-
-                    <div style={{ flex: 1, textAlign: 'center' }}>
-                      <div style={styles.ratingText}>
-                        <span style={{ color: "#f59e0b" }}>★</span> {avg.toFixed(1)}
-                      </div>
-                    </div>
-
-                    <div style={{ flex: 1, textAlign: 'right' }}>
-                      <button
-                        style={isOpen ? styles.viewBtnActive : styles.viewBtn}
-                        onClick={() => setOpenProduct(isOpen ? null : p.productId)}
-                      >
-                        {isOpen ? "Close" : "View Reviews"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {isOpen && (
-                    <div style={styles.reviewList}>
-                      {p.reviews.map((r) => (
-                        <div key={r.id} style={styles.reviewItem}>
-                          <div style={styles.reviewHeader}>
-                            <span style={styles.author}>{r.author}</span>
-                            <span style={styles.date}>{new Date(r.createdAt).toLocaleDateString()}</span>
-                          </div>
-                          <div style={styles.starRow}>
-                             {"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}
-                          </div>
-                          <p style={styles.comment}>{r.comment}</p>
-
-                          <div style={styles.replySection}>
-                            {replyingTo === r.id ? (
-                              <div style={styles.replyInputWrapper}>
-                                <textarea
-                                  style={styles.replyTextarea}
-                                  value={tempReply}
-                                  onChange={(e) => setTempReply(e.target.value)}
-                                  placeholder="Write a public reply..."
-                                />
-                                <div style={styles.replyActions}>
-                                  <button style={styles.saveBtn} onClick={() => handleSaveReply(r.id)}>
-                                    {fetcher.state === "submitting" ? "Saving..." : "Save Reply"}
-                                  </button>
-                                  <button style={styles.cancelBtn} onClick={() => setReplyingTo(null)}>Cancel</button>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                {r.reply ? (
-                                  <div style={styles.existingReply}>
-                                    <div style={styles.replyLabel}>Store Response:</div>
-                                    <p style={styles.replyContent}>{r.reply}</p>
-                                    <button 
-                                      style={styles.editReplyBtn} 
-                                      onClick={() => { setReplyingTo(r.id); setTempReply(r.reply); }}
-                                    >Edit Reply</button>
-                                  </div>
-                                ) : (
-                                  <button style={styles.replyBtn} onClick={() => { setReplyingTo(r.id); setTempReply(""); }}>
-                                    Reply to review
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
-function StatCard({ label, value, accent }) {
-  return (
-    <div style={styles.statCard}>
-      <div style={{ ...styles.statAccent, backgroundColor: accent }} />
-      <div style={styles.statLabel}>{label}</div>
-      <div style={styles.statValue}>{value}</div>
-    </div>
-  );
-}
-
-/* ---------------- LIGHT THEME STYLES ---------------- */
+/* ---------------- INLINE STYLES ---------------- */
 const styles = {
-  container: {
-    padding: "40px 80px",
-    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-    backgroundColor: "#f8fafc", // Light background
-    color: "#0f172a", // Dark text
-    minHeight: "100vh",
-  },
-  header: { marginBottom: "40px" },
-  title: { fontSize: "32px", fontWeight: "800", margin: "0 0 8px 0", letterSpacing: "-0.5px", color: "#1e293b" },
-  subtitle: { color: "#64748b", fontSize: "16px", margin: 0 },
-  statsRow: { display: "flex", gap: "24px", marginBottom: "48px" },
-  statCard: {
-    position: "relative",
-    backgroundColor: "#ffffff",
-    padding: "24px",
-    borderRadius: "12px",
-    flex: 1,
-    border: "1px solid #e2e8f0",
-    overflow: "hidden",
-    boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
-  },
-  statAccent: { position: "absolute", top: 0, left: 0, width: "4px", height: "100%" },
-  statLabel: { color: "#64748b", fontSize: "14px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" },
-  statValue: { fontSize: "32px", fontWeight: "700", marginTop: "8px", color: "#0f172a" },
-  card: {
-    backgroundColor: "#ffffff",
-    borderRadius: "16px",
-    border: "1px solid #e2e8f0",
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
-  },
-  cardHeader: {
-    padding: "24px 32px",
-    borderBottom: "1px solid #e2e8f0",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  cardTitle: { fontSize: "20px", fontWeight: "600", margin: 0, color: "#1e293b" },
-  badge: { backgroundColor: "#f1f5f9", color: "#475569", padding: "4px 12px", borderRadius: "99px", fontSize: "12px", fontWeight: "600" },
-  table: { width: "100%" },
-  tableHeader: {
-    display: "flex",
-    padding: "16px 32px",
-    color: "#94a3b8",
-    fontSize: "12px",
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: "1px",
-    borderBottom: "1px solid #f1f5f9",
-  },
-  rowWrapper: { borderBottom: "1px solid #f1f5f9" },
-  productRow: { display: "flex", padding: "24px 32px", alignItems: "center" },
-  productName: { fontSize: "16px", fontWeight: "600", color: "#1e293b" },
-  productSub: { fontSize: "13px", color: "#94a3b8", marginTop: "4px" },
-  ratingText: { fontSize: "16px", fontWeight: "600", color: "#1e293b" },
-  viewBtn: {
-    backgroundColor: "transparent",
-    color: "#64748b",
-    border: "1px solid #e2e8f0",
-    padding: "8px 16px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontSize: "13px",
-    fontWeight: "600",
-    transition: "all 0.2s",
-  },
-  viewBtnActive: {
-    backgroundColor: "#1e293b",
-    color: "#ffffff",
-    border: "1px solid #1e293b",
-    padding: "8px 16px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontSize: "13px",
-    fontWeight: "600",
-  },
-  reviewList: { backgroundColor: "#f8fafc", padding: "0 32px 24px 32px" },
-  reviewItem: { padding: "20px 0", borderBottom: "1px solid #e2e8f0" },
-  reviewHeader: { display: "flex", justifyContent: "space-between", marginBottom: "4px" },
-  author: { fontWeight: "600", color: "#1e293b", fontSize: "14px" },
-  date: { fontSize: "12px", color: "#94a3b8" },
-  starRow: { color: "#f59e0b", fontSize: "12px", marginBottom: "8px" },
-  comment: { fontSize: "14px", color: "#475569", lineHeight: "1.6", margin: "0 0 16px 0" },
-  emptyState: { padding: "48px", textAlign: "center", color: "#94a3b8" },
+  layout: { display: "flex", height: "100vh", backgroundColor: "#f8fafc", fontFamily: "sans-serif" },
+  sidebar: { width: "240px", backgroundColor: "#ffffff", borderRight: "1px solid #e2e8f0", padding: "24px", display: "flex", flexDirection: "column" },
+  logo: { fontSize: "20px", fontWeight: "bold", marginBottom: "40px", color: "#1e293b" },
+  navItem: { padding: "12px 0", color: "#64748b", cursor: "pointer", fontSize: "14px" },
+  navItemActive: { padding: "12px 0", color: "#1e293b", fontWeight: "bold", cursor: "pointer", fontSize: "14px" },
+  sidebarFooter: { fontSize: "14px", color: "#94a3b8", paddingTop: "20px", borderTop: "1px solid #f1f5f9" },
   
-  replySection: { marginTop: "12px" },
-  replyBtn: {
-    backgroundColor: "transparent",
-    color: "#2563eb",
-    border: "1px solid #bfdbfe",
-    padding: "6px 12px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontSize: "12px",
-    fontWeight: "600"
-  },
-  existingReply: {
-    padding: "12px 16px",
-    backgroundColor: "#f1f5f9",
-    borderRadius: "8px",
-    borderLeft: "3px solid #3b82f6"
-  },
-  replyLabel: { fontSize: "11px", fontWeight: "700", color: "#2563eb", textTransform: "uppercase", marginBottom: "4px" },
-  replyContent: { fontSize: "14px", color: "#334155", margin: "0 0 8px 0", fontStyle: "italic" },
-  editReplyBtn: { background: "none", border: "none", color: "#94a3b8", fontSize: "12px", cursor: "pointer", padding: 0, textDecoration: "underline" },
-  replyInputWrapper: { display: "flex", flexDirection: "column", gap: "10px" },
-  replyTextarea: {
-    width: "100%",
-    minHeight: "80px",
-    backgroundColor: "#ffffff",
-    color: "#1e293b",
-    border: "1px solid #cbd5e1",
-    borderRadius: "8px",
-    padding: "12px",
-    fontSize: "14px",
-    outline: "none"
-  },
-  replyActions: { display: "flex", gap: "10px" },
-  saveBtn: { backgroundColor: "#2563eb", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", fontWeight: "600", cursor: "pointer" },
-  cancelBtn: { backgroundColor: "transparent", color: "#64748b", border: "none", cursor: "pointer", fontSize: "14px" }
+  main: { flex: 1, overflowY: "auto" },
+  container: { padding: "40px", maxWidth: "1100px", margin: "0 auto" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "32px" },
+  title: { fontSize: "24px", margin: "0 0 8px 0", color: "#1e293b" },
+  subtitle: { fontSize: "14px", color: "#64748b", margin: 0 },
+  searchInput: { padding: "10px 16px", borderRadius: "8px", border: "1px solid #e2e8f0", width: "260px" },
+
+  card: { backgroundColor: "#ffffff", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", overflow: "hidden" },
+  table: { width: "100%", borderCollapse: "collapse", textAlign: "left" },
+  theadRow: { backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" },
+  th: { padding: "12px 20px", fontSize: "11px", fontWeight: "bold", color: "#64748b", letterSpacing: "0.5px" },
+  tr: { borderBottom: "1px solid #f1f5f9" },
+  td: { padding: "16px 20px", fontSize: "14px", color: "#1e293b" },
+  productCell: { display: "flex", alignItems: "center", gap: "12px" },
+  iconCircle: { width: "32px", height: "32px", borderRadius: "6px", backgroundColor: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" },
+  actionBtn: { background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "#94a3b8" },
+
+  overlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 },
+  modal: { backgroundColor: "#ffffff", width: "480px", borderRadius: "12px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", padding: "24px" },
+  modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f5f9", paddingBottom: "16px", marginBottom: "20px" },
+  modalBody: { display: "flex", flexDirection: "column", gap: "16px" },
+  label: { fontSize: "11px", fontWeight: "bold", color: "#94a3b8", textTransform: "uppercase" },
+  reviewText: { fontSize: "15px", lineHeight: "1.5", color: "#334155", margin: 0 },
+  ratingBox: { fontSize: "13px", fontWeight: "bold", color: "#f59e0b" },
+  replyArea: { backgroundColor: "#f8fafc", padding: "16px", borderRadius: "8px", marginTop: "10px" },
+  textarea: { width: "100%", height: "80px", border: "1px solid #e2e8f0", borderRadius: "6px", padding: "10px", marginTop: "8px", fontSize: "14px", resize: "none" },
+  saveBtn: { backgroundColor: "#1e293b", color: "#ffffff", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" },
+  cancelBtn: { background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "14px" }
 };
