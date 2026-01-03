@@ -42,3 +42,9 @@ model Review {
   status       String   @default("PENDING")
   createdAt    DateTime @default(now())
 }
+model Settings {
+  id        String   @id @default(uuid())
+  shop      String   @unique
+  config    String   @db.Text // This will store the JSON from your editor
+  updatedAt DateTime @updatedAt
+}

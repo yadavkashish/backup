@@ -1,275 +1,98 @@
+{% if block.settings.enable %}
+<div id="app-reviews-root" 
+     data-product-id="{{ product.id }}" 
+     data-shop="{{ shop.permanent_domain }}">
+</div>
+
+<script>
+async function initProductReviews() {
+    const root = document.querySelector("#app-reviews-root");
+    if (!root) return;
+
+    const shop = root.dataset.shop;
+    const productId = root.dataset.productId;
+    const API = "https://judgme.onrender.com";
+
+    try {
+        // FETCH CUSTOM DESIGN FROM YOUR DB
+        const settingsRes = await fetch(`${API}/api/public/settings?shop=${shop}`).then(res => res.json());
+        const reviewsRes = await fetch(`${API}/api/public/reviews?productId=${productId}&shop=${shop}`).then(res => res.json());
+
+        const cfg = settingsRes.config || {
+            primaryColor: "#4A90E2",
+            secondaryColor: "#64748b",
+            starColor: "#fbbf24",
+            buttonColor: "#008060",
+            borderRadius: 12,
+            shadowDepth: 4,
+            fontSize: 14
+        };
+
+        // INJECT THE DYNAMIC STYLES
+        const styleTag = document.createElement('style');
+        styleTag.innerHTML = `
+            :root {
+                --jd-primary: ${cfg.primaryColor};
+                --jd-text: ${cfg.secondaryColor};
+                --jd-star: ${cfg.starColor};
+                --jd-btn: ${cfg.buttonColor};
+                --jd-radius: ${cfg.borderRadius}px;
+                --jd-shadow: 0 ${cfg.shadowDepth}px ${cfg.shadowDepth * 4}px rgba(0,0,0,0.1);
+            }
+            .jd-card { 
+                background: #fff; padding: 30px; border: 1px solid #eee;
+                border-radius: var(--jd-radius); box-shadow: var(--jd-shadow);
+                color: var(--jd-text); font-size: ${cfg.fontSize}px;
+            }
+            .jd-btn { 
+                background: var(--jd-btn); color: white; border: none; width: 100%;
+                padding: 12px; border-radius: calc(var(--jd-radius) / 2); cursor: pointer;
+            }
+            .jd-input { 
+                width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc;
+                border-radius: calc(var(--jd-radius) / 2);
+            }
+        `;
+        document.head.appendChild(styleTag);
+
+        root.innerHTML = `
+            <div class="jd-card" style="max-width:600px; margin: 20px auto;">
+                <h2 style="text-align:center">Customer Reviews</h2>
+                <div style="text-align:center; font-size:30px; color:var(--jd-star); margin-bottom:20px;">
+                    ★★★★★
+                </div>
+                <input id="author" class="jd-input" placeholder="Your Name" />
+                <textarea id="comment" class="jd-input" style="height:80px" placeholder="Write something..."></textarea>
+                <button id="submitBtn" class="jd-btn">Submit Review</button>
+                
+                <div style="margin-top:30px">
+                    ${reviewsRes.length === 0 ? '<p>No reviews yet.</p>' : reviewsRes.map(r => `
+                        <div style="border-top:1px solid #eee; padding: 15px 0;">
+                            <strong>${r.author}</strong>
+                            <div style="color:var(--jd-star)">${'★'.repeat(r.rating)}</div>
+                            <p>${r.comment}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        document.getElementById("submitBtn").onclick = () => alert("Logic connected!");
+
+    } catch (e) {
+        console.error("Widget load failed", e);
+    }
+}
+initProductReviews();
+</script>
+{% endif %}
+
 {% schema %}
 {
   "name": "Product Reviews",
   "target": "section",
   "settings": [
-    { "type": "checkbox", "id": "enable", "label": "Enable reviews", "default": true },
-    { "type": "text", "id": "title", "label": "Section title", "default": "Customer Reviews" },
-    { "type": "text", "id": "button_text", "label": "Submit button text", "default": "Write a Review" },
-    { "type": "color", "id": "accent_color", "label": "Star color", "default": "#facc15" },
-    { "type": "color", "id": "button_color", "label": "Button color", "default": "#111827" },
-    { "type": "checkbox", "id": "show_author", "label": "Show name field", "default": true }
+    { "type": "checkbox", "id": "enable", "label": "Enable reviews", "default": true }
   ]
 }
 {% endschema %}
-
-{% if block.settings.enable %}
-  <style>
-    .jd-reviews-container {
-      max-width: 800px;
-      margin: 40px auto;
-      padding: 0 20px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      color: #374151;
-    }
-    .jd-reviews-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 32px;
-      border-bottom: 1px solid #e5e7eb;
-      padding-bottom: 16px;
-    }
-    .jd-reviews-header h3 {
-      font-size: 24px;
-      font-weight: 700;
-      margin: 0;
-      color: #111827;
-    }
-    .jd-btn-primary {
-      padding: 10px 20px;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 14px;
-      border: none;
-      cursor: pointer;
-      transition: opacity 0.2s ease;
-    }
-    .jd-btn-primary:hover { opacity: 0.9; }
-    
-    .jd-review-card {
-      padding: 24px 0;
-      border-bottom: 1px solid #f3f4f6;
-    }
-    .jd-review-card:last-child { border-bottom: none; }
-    
-    .jd-review-meta {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-    .jd-review-author {
-      font-weight: 600;
-      color: #111827;
-    }
-    .jd-review-stars { font-size: 14px; letter-spacing: 2px; }
-    .jd-review-comment {
-      line-height: 1.6;
-      color: #4b5563;
-      margin: 8px 0 0 0;
-    }
-
-    /* Store Reply Styles */
-    .jd-reply-box {
-      margin-top: 16px;
-      margin-left: 20px;
-      padding: 16px;
-      background-color: #f9fafb;
-      border-left: 4px solid #d1d5db;
-      border-radius: 4px;
-    }
-    .jd-reply-header {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: #6b7280;
-      margin-bottom: 4px;
-      display: block;
-    }
-    .jd-reply-text {
-      font-size: 14px;
-      color: #374151;
-      line-height: 1.5;
-      margin: 0;
-      font-style: italic;
-    }
-
-    .jd-empty-state {
-      text-align: center;
-      padding: 40px;
-      background: #f9fafb;
-      border-radius: 8px;
-      color: #6b7280;
-    }
-  </style>
-
-  <div
-    id="app-reviews-root"
-    data-product-id="{{ product.id }}"
-    data-shop="{{ shop.permanent_domain }}"
-    data-title="{{ block.settings.title | escape }}"
-    data-button-text="{{ block.settings.button_text | escape }}"
-    data-accent-color="{{ block.settings.accent_color }}"
-    data-button-color="{{ block.settings.button_color }}"
-    data-show-author="{{ block.settings.show_author }}">
-    </div>
-
-  <script>
-  async function initProductReviews(container = document) {
-    const root = container.querySelector("#app-reviews-root");
-    if (!root) return;
-
-    /* ---------------- SETTINGS FROM ADMIN ---------------- */
-    const { productId, shop, title, buttonText, accentColor, buttonColor } = root.dataset;
-    const productName = root.dataset.productName || "{{ product.title | escape }}";
-    const showAuthor = root.dataset.showAuthor !== "false"; 
-    const API = "https://judgme.onrender.com";
-
-    /* ---------------- LOAD REVIEWS ---------------- */
-    let reviews = [];
-    try {
-      const res = await fetch(`${API}/api/public/reviews?productId=${productId}&shop=${shop}`);
-      reviews = await res.json();
-      
-      // DEBUG: Check what data is arriving
-      console.log("DEBUG: Fetched reviews data:", reviews);
-    } catch (err) {
-      console.error("DEBUG: Failed to load reviews:", err);
-    }
-
-    /* ---------------- RENDER ---------------- */
-    root.innerHTML = `
-      <div class="jd-reviews-container">
-        <div class="jd-reviews-header">
-          <h3>${title}</h3>
-        </div>
-
-        <div class="jd-reviews-list">
-          ${reviews.length === 0 
-            ? `<div class="jd-empty-state">No reviews yet. Be the first to write one!</div>` 
-            : reviews.map(r => {
-                // DEBUG: Check if 'reply' exists in this specific object
-                console.log(`DEBUG: Review ID ${r.id} | Reply found:`, r.reply);
-
-                return `
-                <div class="jd-review-card">
-                  <div class="jd-review-meta">
-                    <span class="jd-review-author">${r.author}</span>
-                    <div class="jd-review-stars" style="color:${accentColor}">
-                      ${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}
-                    </div>
-                  </div>
-                  <p class="jd-review-comment">${r.comment}</p>
-
-                  ${r.reply && r.reply.trim() !== "" ? `
-                    <div class="jd-reply-box">
-                      <span class="jd-reply-header">Store Response</span>
-                      <p class="jd-reply-text">${r.reply}</p>
-                    </div>
-                  ` : ""}
-                </div>
-                `;
-              }).join("")
-          }
-        </div>
-
-        <div style="margin-top:32px; padding:24px; background:#f9fafb; border-radius:12px; border:1px solid #e5e7eb;">
-          <h4 style="font-size:18px; margin-bottom:12px; font-weight:600;">Write a review</h4>
-
-          <div id="stars" style="font-size:28px; color:${accentColor}; cursor:pointer; margin-bottom:12px;">
-            ${[1, 2, 3, 4, 5].map(i => `<span data-v="${i}">★</span>`).join("")}
-          </div>
-
-          ${showAuthor ? `
-            <input id="author" placeholder="Your name" 
-              style="width:100%; margin-bottom:12px; padding:12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;" />
-          ` : ""}
-
-          <textarea id="comment" placeholder="How was your experience?" 
-            style="width:100%; padding:12px; height:100px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; margin-bottom:12px;"></textarea>
-
-          <button id="submitReview" 
-            style="width:100%; background:${buttonColor}; color:white; padding:12px; border:none; border-radius:8px; font-weight:600; cursor:pointer; transition: opacity 0.2s;">
-            ${buttonText}
-          </button>
-
-          <p id="msg" style="margin-top:12px; text-align:center; font-weight:500; min-height:20px;"></p>
-        </div>
-      </div>
-    `;
-
-    /* ---------------- STAR LOGIC ---------------- */
-    let rating = 5;
-    const stars = root.querySelectorAll("#stars span");
-    stars.forEach(star => {
-      star.onclick = () => {
-        rating = Number(star.dataset.v);
-        stars.forEach(s => {
-          s.style.opacity = Number(s.dataset.v) <= rating ? "1" : "0.3";
-        });
-      };
-    });
-
-    /* ---------------- SUBMIT LOGIC ---------------- */
-    const submitBtn = root.querySelector("#submitReview");
-    submitBtn.onclick = async () => {
-      const authorInput = root.querySelector("#author");
-      const commentInput = root.querySelector("#comment");
-      const msg = root.querySelector("#msg");
-      
-      const author = authorInput ? authorInput.value.trim() : "Anonymous";
-      const comment = commentInput.value.trim();
-
-      if (!comment) {
-        msg.style.color = "#dc2626";
-        msg.innerText = "Please write a comment.";
-        return;
-      }
-
-      submitBtn.disabled = true;
-      submitBtn.innerText = "Submitting...";
-
-      try {
-        const resp = await fetch(`${API}/api/public/submit-review`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            shop,
-            productId,
-            productName,
-            rating,
-            author: author || "Anonymous",
-            comment
-          }),
-        });
-
-        if (resp.ok) {
-          msg.style.color = "#16a34a";
-          msg.innerText = "Thanks for your review!";
-          commentInput.value = "";
-          if (authorInput) authorInput.value = "";
-          setTimeout(() => initProductReviews(container), 2000);
-        } else {
-          throw new Error("Submit failed");
-        }
-      } catch (err) {
-        msg.style.color = "#dc2626";
-        msg.innerText = "Error submitting review. Please try again.";
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerText = buttonText;
-      }
-    };
-  }
-
-  /* ---------------- INITIALIZE ---------------- */
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => initProductReviews());
-  } else {
-    initProductReviews();
-  }
-
-  document.addEventListener("shopify:section:load", (event) => initProductReviews(event.target));
-</script>
-{% endif %}
