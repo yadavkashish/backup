@@ -1,38 +1,44 @@
-// app/routes/api.public.reviews.jsx
 import db from "../db.server";
 
-export async function loader({ request }) {
-  const url = new URL(request.url);
-  const productId = url.searchParams.get("productId");
-  const shop = url.searchParams.get("shop")?.replace(/\/$/, "");
-
-  if (!productId || !shop) {
-    return new Response("Missing params", { status: 400 });
+export const loader = async ({ request }) => {
+  // Handle CORS Preflight (OPTIONS)
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
   }
 
-  const reviews = await db.review.findMany({
-    where: {
-      productId: String(productId),
-      shop: shop,
-      status: "PUBLISHED",
-    },
-    // This is the critical part you are likely missing:
-    select: {
-      id: true,
-      author: true,
-      rating: true,
-      comment: true,
-      createdAt: true,
-      reply: true,     // <--- MAKE SURE THIS IS HERE
-      replyDate: true, // <--- Add this if you want to show when you replied
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const url = new URL(request.url);
+  const productId = url.searchParams.get("productId");
+  const shop = url.searchParams.get("shop");
 
-  return new Response(JSON.stringify(reviews), {
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*", // Required for Shopify storefront access
-    },
-  });
-}
+  try {
+    const reviews = await db.review.findMany({
+      where: { shop, productId, status: "PUBLISHED" },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return new Response(JSON.stringify(reviews), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+      },
+    });
+  } catch (error) {
+    // If the DB query fails, we STILL need CORS headers on the error response
+    return new Response(JSON.stringify({ error: "Database connection failed" }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  }
+};

@@ -11,14 +11,22 @@ async function initProductReviews() {
 
     const shop = root.dataset.shop;
     const productId = root.dataset.productId;
-    const API = "https://judgme.onrender.com";
+    const API = "https://judgme.onrender.com"; // Ensure this matches your production URL
 
     try {
-        // FETCH CUSTOM DESIGN FROM YOUR DB
-        const settingsRes = await fetch(`${API}/api/public/settings?shop=${shop}`).then(res => res.json());
-        const reviewsRes = await fetch(`${API}/api/public/reviews?productId=${productId}&shop=${shop}`).then(res => res.json());
+        // Fetch both datasets
+        const [settingsRes, reviewsRes] = await Promise.all([
+            fetch(`${API}/api/public/settings?shop=${shop}`),
+            fetch(`${API}/api/public/reviews?productId=${productId}&shop=${shop}`)
+        ]);
 
-        const cfg = settingsRes.config || {
+        if (!settingsRes.ok || !reviewsRes.ok) throw new Error("API Connection Failed");
+
+        const settingsData = await settingsRes.json();
+        const reviewsData = await reviewsRes.json();
+
+        // Use saved config or defaults
+        const cfg = settingsData.config || {
             primaryColor: "#4A90E2",
             secondaryColor: "#64748b",
             starColor: "#fbbf24",
@@ -28,12 +36,11 @@ async function initProductReviews() {
             fontSize: 14
         };
 
-        // INJECT THE DYNAMIC STYLES
+        // Inject Styles and HTML as you had them
         const styleTag = document.createElement('style');
         styleTag.innerHTML = `
             :root {
                 --jd-primary: ${cfg.primaryColor};
-                --jd-text: ${cfg.secondaryColor};
                 --jd-star: ${cfg.starColor};
                 --jd-btn: ${cfg.buttonColor};
                 --jd-radius: ${cfg.borderRadius}px;
@@ -42,32 +49,22 @@ async function initProductReviews() {
             .jd-card { 
                 background: #fff; padding: 30px; border: 1px solid #eee;
                 border-radius: var(--jd-radius); box-shadow: var(--jd-shadow);
-                color: var(--jd-text); font-size: ${cfg.fontSize}px;
+                color: ${cfg.secondaryColor}; font-size: ${cfg.fontSize}px;
             }
-            .jd-btn { 
-                background: var(--jd-btn); color: white; border: none; width: 100%;
-                padding: 12px; border-radius: calc(var(--jd-radius) / 2); cursor: pointer;
-            }
-            .jd-input { 
-                width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc;
-                border-radius: calc(var(--jd-radius) / 2);
-            }
+            .jd-btn { background: var(--jd-btn); color: white; padding: 12px; border-radius: 8px; width: 100%; border:none; cursor:pointer; }
+            .jd-input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
         `;
         document.head.appendChild(styleTag);
 
         root.innerHTML = `
             <div class="jd-card" style="max-width:600px; margin: 20px auto;">
                 <h2 style="text-align:center">Customer Reviews</h2>
-                <div style="text-align:center; font-size:30px; color:var(--jd-star); margin-bottom:20px;">
-                    ★★★★★
-                </div>
                 <input id="author" class="jd-input" placeholder="Your Name" />
-                <textarea id="comment" class="jd-input" style="height:80px" placeholder="Write something..."></textarea>
+                <textarea id="comment" class="jd-input" style="height:80px" placeholder="Write a review..."></textarea>
                 <button id="submitBtn" class="jd-btn">Submit Review</button>
-                
-                <div style="margin-top:30px">
-                    ${reviewsRes.length === 0 ? '<p>No reviews yet.</p>' : reviewsRes.map(r => `
-                        <div style="border-top:1px solid #eee; padding: 15px 0;">
+                <div style="margin-top:20px">
+                    ${reviewsData.length === 0 ? '<p>No reviews yet.</p>' : reviewsData.map(r => `
+                        <div style="border-top:1px solid #eee; padding:10px 0;">
                             <strong>${r.author}</strong>
                             <div style="color:var(--jd-star)">${'★'.repeat(r.rating)}</div>
                             <p>${r.comment}</p>
@@ -76,11 +73,8 @@ async function initProductReviews() {
                 </div>
             </div>
         `;
-
-        document.getElementById("submitBtn").onclick = () => alert("Logic connected!");
-
     } catch (e) {
-        console.error("Widget load failed", e);
+        console.error("JUDGME WIDGET ERROR:", e);
     }
 }
 initProductReviews();
