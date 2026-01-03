@@ -19,8 +19,10 @@ export const loader = async ({ request }) => {
 
   return new Response(JSON.stringify({ config }), {
     headers: {
-      "Access-Control-Allow-Origin": "*", // Allows Shopify Storefront access
       "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*", 
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
     },
   });
 };
