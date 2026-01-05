@@ -1,3 +1,4 @@
+//api.public.settings
 import db from "../db.server";
 
 export const loader = async ({ request }) => {

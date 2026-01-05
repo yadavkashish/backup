@@ -1,6 +1,7 @@
 {% if block.settings.enable %}
 <div id="app-reviews-root" 
      data-product-id="{{ product.id }}" 
+     data-product-name="{{ product.title | escape }}"
      data-shop="{{ shop.permanent_domain }}">
 </div>
 
@@ -11,21 +12,19 @@ async function initProductReviews() {
 
     const shop = root.dataset.shop;
     const productId = root.dataset.productId;
-    const API = "https://judgme.onrender.com"; // Ensure this matches your production URL
+    const productName = root.dataset.productName;
+    const API = "https://judgme.onrender.com"; // Ensure this matches your live URL
 
     try {
-        // Fetch both datasets
         const [settingsRes, reviewsRes] = await Promise.all([
             fetch(`${API}/api/public/settings?shop=${shop}`),
             fetch(`${API}/api/public/reviews?productId=${productId}&shop=${shop}`)
         ]);
 
-        if (!settingsRes.ok || !reviewsRes.ok) throw new Error("API Connection Failed");
-
         const settingsData = await settingsRes.json();
         const reviewsData = await reviewsRes.json();
 
-        // Use saved config or defaults
+        // Fallback to defaults if DB is empty
         const cfg = settingsData.config || {
             primaryColor: "#4A90E2",
             secondaryColor: "#64748b",
@@ -33,48 +32,147 @@ async function initProductReviews() {
             buttonColor: "#008060",
             borderRadius: 12,
             shadowDepth: 4,
-            fontSize: 14
+            fontSize: 14,
+            showPhotos: true,
+            showVideos: true,
+            showRatings: true
         };
 
-        // Inject Styles and HTML as you had them
         const styleTag = document.createElement('style');
         styleTag.innerHTML = `
             :root {
                 --jd-primary: ${cfg.primaryColor};
                 --jd-star: ${cfg.starColor};
                 --jd-btn: ${cfg.buttonColor};
+                --jd-text: ${cfg.secondaryColor};
                 --jd-radius: ${cfg.borderRadius}px;
                 --jd-shadow: 0 ${cfg.shadowDepth}px ${cfg.shadowDepth * 4}px rgba(0,0,0,0.1);
             }
             .jd-card { 
-                background: #fff; padding: 30px; border: 1px solid #eee;
+                background: #fff; padding: 40px; border: 1px solid #e2e8f0;
                 border-radius: var(--jd-radius); box-shadow: var(--jd-shadow);
-                color: ${cfg.secondaryColor}; font-size: ${cfg.fontSize}px;
+                color: var(--jd-text); font-size: ${cfg.fontSize}px;
+                font-family: 'Inter', -apple-system, sans-serif; max-width: 640px; margin: 40px auto;
             }
-            .jd-btn { background: var(--jd-btn); color: white; padding: 12px; border-radius: 8px; width: 100%; border:none; cursor:pointer; }
-            .jd-input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+            .jd-btn { 
+                background: var(--jd-btn); color: white; padding: 14px; 
+                border-radius: calc(var(--jd-radius) / 1.5); width: 100%; 
+                border: none; cursor: pointer; font-weight: 700; margin-top: 20px;
+                transition: opacity 0.2s;
+            }
+            .jd-btn:hover { opacity: 0.9; }
+            .jd-input { 
+                width: 100%; padding: 12px; margin: 8px 0 16px 0; border: 1px solid #e2e8f0;
+                border-radius: calc(var(--jd-radius) / 1.5); color: var(--jd-text);
+                font-size: inherit; outline: none; box-sizing: border-box;
+            }
+            .jd-star-row { font-size: 32px; color: var(--jd-star); cursor: pointer; margin-bottom: 24px; }
+            .jd-upload-grid { display: flex; gap: 12px; margin-top: 10px; }
+            .jd-upload-box { 
+                flex: 1; border: 2px dashed #e2e8f0; padding: 15px; text-align: center;
+                border-radius: calc(var(--jd-radius) / 1.5); font-size: 11px; font-weight: 700;
+            }
         `;
         document.head.appendChild(styleTag);
 
         root.innerHTML = `
-            <div class="jd-card" style="max-width:600px; margin: 20px auto;">
-                <h2 style="text-align:center">Customer Reviews</h2>
-                <input id="author" class="jd-input" placeholder="Your Name" />
-                <textarea id="comment" class="jd-input" style="height:80px" placeholder="Write a review..."></textarea>
-                <button id="submitBtn" class="jd-btn">Submit Review</button>
-                <div style="margin-top:20px">
-                    ${reviewsData.length === 0 ? '<p>No reviews yet.</p>' : reviewsData.map(r => `
-                        <div style="border-top:1px solid #eee; padding:10px 0;">
-                            <strong>${r.author}</strong>
-                            <div style="color:var(--jd-star)">${'★'.repeat(r.rating)}</div>
-                            <p>${r.comment}</p>
+            <div class="jd-card">
+                <div style="text-align:center; margin-bottom: 32px;">
+                    <div style="font-size: 40px; color: var(--jd-star); margin-bottom: 12px;">★</div>
+                    <h2 style="margin: 0; font-size: 24px; font-weight: 800;">Write a Review</h2>
+                    <p style="opacity: 0.7;">Help others by sharing your experience.</p>
+                </div>
+
+                ${cfg.showRatings ? `
+                    <label style="font-weight:700;">Your Rating *</label>
+                    <div id="star-input" class="jd-star-row">
+                        ${[1,2,3,4,5].map(i => `<span data-v="${i}">★</span>`).join('')}
+                    </div>
+                ` : ''}
+
+                <label style="font-weight:700;">Name</label>
+                <input id="author-field" class="jd-input" placeholder="e.g. Jane Doe" />
+
+                <label style="font-weight:700;">Detailed Review *</label>
+                <textarea id="comment-field" class="jd-input" style="height:100px; resize: none;" placeholder="Tell us more..."></textarea>
+
+                <div class="jd-upload-grid">
+                    ${cfg.showPhotos ? `
+                        <div class="jd-upload-box">
+                            <div style="font-size: 18px; color: var(--jd-primary);">📷</div>
+                            Add Photos
                         </div>
-                    `).join('')}
+                    ` : ''}
+                    ${cfg.showVideos ? `
+                        <div class="jd-upload-box">
+                            <div style="font-size: 18px; color: var(--jd-primary);">🎥</div>
+                            Add Video
+                        </div>
+                    ` : ''}
+                </div>
+
+                <button id="submitBtn" class="jd-btn">Submit Review</button>
+                <p id="form-msg" style="margin-top:10px; text-align:center; font-weight:600;"></p>
+
+                <div style="margin-top: 40px; border-top: 1px solid #f1f5f9; padding-top: 24px;">
+                    <h3 style="font-size: 14px; color: #94a3b8; text-transform: uppercase;">Recent Activity</h3>
+                    <div id="reviews-list">
+                        ${reviewsData.length === 0 ? '<p>No reviews yet. Be the first!</p>' : reviewsData.map(r => `
+                            <div style="padding: 15px 0; border-bottom: 1px solid #f8fafc;">
+                                <strong>${r.author}</strong>
+                                <div style="color:var(--jd-star)">${'★'.repeat(r.rating)}</div>
+                                <p style="margin: 5px 0 0 0;">${r.comment}</p>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
             </div>
         `;
+
+        // STAR INTERACTION
+        let currentRating = 5;
+        const stars = root.querySelectorAll("#star-input span");
+        stars.forEach(s => s.onclick = () => {
+            currentRating = s.dataset.v;
+            stars.forEach(star => star.style.opacity = star.dataset.v <= currentRating ? "1" : "0.3");
+        });
+
+        // SUBMIT ACTION
+        root.querySelector("#submitBtn").onclick = async () => {
+            const author = root.querySelector("#author-field").value;
+            const comment = root.querySelector("#comment-field").value;
+            const msg = root.querySelector("#form-msg");
+
+            if(!comment) {
+                msg.style.color = "red";
+                return msg.innerText = "Please write a comment.";
+            }
+
+            root.querySelector("#submitBtn").innerText = "Submitting...";
+            root.querySelector("#submitBtn").disabled = true;
+
+            try {
+                const res = await fetch(`${API}/api/public/submit-review`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ shop, productId, productName, rating: currentRating, author: author || "Anonymous", comment })
+                });
+
+                if(res.ok) {
+                    msg.style.color = "#10b981";
+                    msg.innerText = "Thanks for your review!";
+                    setTimeout(() => initProductReviews(), 2000);
+                }
+            } catch (err) {
+                msg.style.color = "red";
+                msg.innerText = "Error submitting review.";
+                root.querySelector("#submitBtn").innerText = "Submit Review";
+                root.querySelector("#submitBtn").disabled = false;
+            }
+        };
+
     } catch (e) {
-        console.error("JUDGME WIDGET ERROR:", e);
+        console.error("Widget Error:", e);
     }
 }
 initProductReviews();
