@@ -166,8 +166,8 @@ export default function ReviewEditor() {
 
         <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
           <SideSection title="Visibility" icon={<LayoutIcon size={16} />}>
-            <Toggle label="Allow Photos" active={config.showPhotos} onClick={() => updateConfig("showPhotos", !config.showPhotos)} />
-            <Toggle label="Allow Videos" active={config.showVideos} onClick={() => updateConfig("showVideos", !config.showVideos)} />
+           
+           
             <Toggle label="Show Ratings" active={config.showRatings} onClick={() => updateConfig("showRatings", !config.showRatings)} />
           </SideSection>
 
@@ -209,7 +209,7 @@ export default function ReviewEditor() {
               gap: "8px"
             }}
           >
-            {isSaving ? "Saving..." : showToast ? <><CheckCircle2 size={18}/> Updated</> : <><Save size={18}/> Save to Database</>}
+            {isSaving ? "Saving..." : showToast ? <><CheckCircle2 size={18}/> Updated</> : <><Save size={18}/> Save</>}
           </button>
         </div>
       </aside>
@@ -243,20 +243,7 @@ export default function ReviewEditor() {
                 <textarea placeholder="Tell us more about the product..." style={{ ...styles.input, height: "100px", resize: "none" }} />
               </div>
 
-              <div style={{ display: "flex", gap: "12px" }}>
-                {config.showPhotos && (
-                  <div style={styles.uploadBox}>
-                    <ImageIcon size={20} color={config.primaryColor} />
-                    <span style={{ fontSize: "11px", fontWeight: "700" }}>Add Photos</span>
-                  </div>
-                )}
-                {config.showVideos && (
-                  <div style={styles.uploadBox}>
-                    <Video size={20} color={config.primaryColor} />
-                    <span style={{ fontSize: "11px", fontWeight: "700" }}>Add Video</span>
-                  </div>
-                )}
-              </div>
+              
             </div>
 
             <div style={{ marginTop: "32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>

@@ -13,7 +13,7 @@ async function initProductReviews() {
     const shop = root.dataset.shop;
     const productId = root.dataset.productId;
     const productName = root.dataset.productName;
-    const API = "https://judgme.onrender.com"; // Ensure this matches your live URL
+    const API = "https://judgme.onrender.com"; 
 
     try {
         const [settingsRes, reviewsRes] = await Promise.all([
@@ -24,7 +24,6 @@ async function initProductReviews() {
         const settingsData = await settingsRes.json();
         const reviewsData = await reviewsRes.json();
 
-        // Fallback to defaults if DB is empty
         const cfg = settingsData.config || {
             primaryColor: "#4A90E2",
             secondaryColor: "#64748b",
@@ -33,8 +32,6 @@ async function initProductReviews() {
             borderRadius: 12,
             shadowDepth: 4,
             fontSize: 14,
-            showPhotos: true,
-            showVideos: true,
             showRatings: true
         };
 
@@ -48,11 +45,22 @@ async function initProductReviews() {
                 --jd-radius: ${cfg.borderRadius}px;
                 --jd-shadow: 0 ${cfg.shadowDepth}px ${cfg.shadowDepth * 4}px rgba(0,0,0,0.1);
             }
+            .jd-button-row { display: flex; gap: 12px; margin: 20px auto; max-width: 640px; }
+            .jd-trigger-btn { 
+                flex: 1; padding: 12px; border: 1px solid #e2e8f0; background: white; 
+                border-radius: var(--jd-radius); cursor: pointer; font-weight: 700; 
+                font-family: inherit; font-size: 14px; transition: all 0.2s;
+            }
+            .jd-trigger-btn:hover { background: #f8fafc; border-color: var(--jd-primary); }
+            .jd-trigger-btn.active { border-color: var(--jd-primary); color: var(--jd-primary); background: #f0f7ff; }
+
+            #jd-form-wrap, #jd-list-wrap { display: none; }
+
             .jd-card { 
                 background: #fff; padding: 40px; border: 1px solid #e2e8f0;
                 border-radius: var(--jd-radius); box-shadow: var(--jd-shadow);
                 color: var(--jd-text); font-size: ${cfg.fontSize}px;
-                font-family: 'Inter', -apple-system, sans-serif; max-width: 640px; margin: 40px auto;
+                font-family: 'Inter', -apple-system, sans-serif; max-width: 640px; margin: 0 auto 40px auto;
             }
             .jd-btn { 
                 background: var(--jd-btn); color: white; padding: 14px; 
@@ -67,61 +75,59 @@ async function initProductReviews() {
                 font-size: inherit; outline: none; box-sizing: border-box;
             }
             .jd-star-row { font-size: 32px; color: var(--jd-star); cursor: pointer; margin-bottom: 24px; }
-            .jd-upload-grid { display: flex; gap: 12px; margin-top: 10px; }
-            .jd-upload-box { 
-                flex: 1; border: 2px dashed #e2e8f0; padding: 15px; text-align: center;
-                border-radius: calc(var(--jd-radius) / 1.5); font-size: 11px; font-weight: 700;
-            }
         `;
         document.head.appendChild(styleTag);
 
         root.innerHTML = `
-            <div class="jd-card">
-                <div style="text-align:center; margin-bottom: 32px;">
-                    <div style="font-size: 40px; color: var(--jd-star); margin-bottom: 12px;">★</div>
-                    <h2 style="margin: 0; font-size: 24px; font-weight: 800;">Write a Review</h2>
-                    <p style="opacity: 0.7;">Help others by sharing your experience.</p>
-                </div>
+            <div class="jd-button-row">
+                <button class="jd-trigger-btn" id="btn-write-trigger"> Write a Review</button>
+                <button class="jd-trigger-btn" id="btn-view-trigger">View Reviews (${reviewsData.length})</button>
+            </div>
 
-                ${cfg.showRatings ? `
-                    <label style="font-weight:700;">Your Rating *</label>
-                    <div id="star-input" class="jd-star-row">
-                        ${[1,2,3,4,5].map(i => `<span data-v="${i}">★</span>`).join('')}
+            <div id="jd-form-wrap">
+                <div class="jd-card">
+                    <div style="text-align:center; margin-bottom: 32px;">
+                        <div style="font-size: 40px; color: var(--jd-star); margin-bottom: 12px;">★</div>
+                        <h2 style="margin: 0; font-size: 24px; font-weight: 800;">Write a Review</h2>
+                        <p style="opacity: 0.7;">Help others by sharing your experience.</p>
                     </div>
-                ` : ''}
 
-                <label style="font-weight:700;">Name</label>
-                <input id="author-field" class="jd-input" placeholder="e.g. Jane Doe" />
-
-                <label style="font-weight:700;">Detailed Review *</label>
-                <textarea id="comment-field" class="jd-input" style="height:100px; resize: none;" placeholder="Tell us more..."></textarea>
-
-                <div class="jd-upload-grid">
-                    ${cfg.showPhotos ? `
-                        <div class="jd-upload-box">
-                            <div style="font-size: 18px; color: var(--jd-primary);">📷</div>
-                            Add Photos
+                    ${cfg.showRatings ? `
+                        <label style="font-weight:700;">Your Rating *</label>
+                        <div id="star-input" class="jd-star-row">
+                            ${[1,2,3,4,5].map(i => `<span data-v="${i}">★</span>`).join('')}
                         </div>
                     ` : ''}
-                    ${cfg.showVideos ? `
-                        <div class="jd-upload-box">
-                            <div style="font-size: 18px; color: var(--jd-primary);">🎥</div>
-                            Add Video
-                        </div>
-                    ` : ''}
+
+                    <label style="font-weight:700;">Name</label>
+                    <input id="author-field" class="jd-input" placeholder="e.g. Jane Doe" />
+
+                    <label style="font-weight:700;">Detailed Review *</label>
+                    <textarea id="comment-field" class="jd-input" style="height:100px; resize: none;" placeholder="Tell us more..."></textarea>
+
+                    <button id="submitBtn" class="jd-btn">Submit Review</button>
+                    <p id="form-msg" style="margin-top:10px; text-align:center; font-weight:600;"></p>
                 </div>
+            </div>
 
-                <button id="submitBtn" class="jd-btn">Submit Review</button>
-                <p id="form-msg" style="margin-top:10px; text-align:center; font-weight:600;"></p>
-
-                <div style="margin-top: 40px; border-top: 1px solid #f1f5f9; padding-top: 24px;">
-                    <h3 style="font-size: 14px; color: #94a3b8; text-transform: uppercase;">Recent Activity</h3>
+            <div id="jd-list-wrap">
+                <div class="jd-card">
+                    <h3 style="font-size: 14px; color: #94a3b8; text-transform: uppercase; margin-bottom: 20px;">Recent Activity</h3>
                     <div id="reviews-list">
                         ${reviewsData.length === 0 ? '<p>No reviews yet. Be the first!</p>' : reviewsData.map(r => `
-                            <div style="padding: 15px 0; border-bottom: 1px solid #f8fafc;">
-                                <strong>${r.author}</strong>
-                                <div style="color:var(--jd-star)">${'★'.repeat(r.rating)}</div>
-                                <p style="margin: 5px 0 0 0;">${r.comment}</p>
+                            <div style="padding: 20px 0; border-bottom: 1px solid #f8fafc;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <strong>${r.author}</strong>
+                                    <span style="font-size: 11px; color: #94a3b8;">${new Date(r.createdAt).toLocaleDateString()}</span>
+                                </div>
+                                <div style="color:var(--jd-star); margin: 4px 0;">${'★'.repeat(r.rating)}</div>
+                                <p style="margin: 5px 0 10px 0; line-height: 1.5;">${r.comment}</p>
+                                ${r.reply ? `
+                                    <div style="margin-top: 15px; margin-left: 20px; padding: 12px 16px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid var(--jd-btn);">
+                                        <span style="font-size: 12px; font-weight: 800; color: var(--jd-btn);">STORE RESPONSE</span>
+                                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #334155;">${r.reply}</p>
+                                    </div>
+                                ` : ''}
                             </div>
                         `).join('')}
                     </div>
@@ -129,7 +135,25 @@ async function initProductReviews() {
             </div>
         `;
 
-        // STAR INTERACTION
+        const formWrap = root.querySelector("#jd-form-wrap");
+        const listWrap = root.querySelector("#jd-list-wrap");
+        const btnWrite = root.querySelector("#btn-write-trigger");
+        const btnView = root.querySelector("#btn-view-trigger");
+
+        btnWrite.onclick = () => {
+            formWrap.style.display = "block";
+            listWrap.style.display = "none";
+            btnWrite.classList.add("active");
+            btnView.classList.remove("active");
+        };
+
+        btnView.onclick = () => {
+            listWrap.style.display = "block";
+            formWrap.style.display = "none";
+            btnView.classList.add("active");
+            btnWrite.classList.remove("active");
+        };
+
         let currentRating = 5;
         const stars = root.querySelectorAll("#star-input span");
         stars.forEach(s => s.onclick = () => {
@@ -137,7 +161,6 @@ async function initProductReviews() {
             stars.forEach(star => star.style.opacity = star.dataset.v <= currentRating ? "1" : "0.3");
         });
 
-        // SUBMIT ACTION
         root.querySelector("#submitBtn").onclick = async () => {
             const author = root.querySelector("#author-field").value;
             const comment = root.querySelector("#comment-field").value;
