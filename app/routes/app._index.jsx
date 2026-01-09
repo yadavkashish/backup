@@ -1,152 +1,312 @@
-import { useLoaderData } from "react-router";
-import { Star, CheckCircle, ShoppingBag, MessageCircle, TrendingUp } from "lucide-react";
+import { useLoaderData, useFetcher } from "react-router";
+
+
 import { authenticate } from "../shopify.server";
+
+
+import { useState } from "react";
+import { 
+  Star, 
+  X, 
+  MessageSquare, 
+  ChevronRight, 
+  Edit2, 
+  Send,
+  User,
+  Store,
+  TrendingUp,
+  Inbox,
+  CheckCircle2
+} from "lucide-react";
+
 import db from "../db.server";
 
+// --- LOADER ---
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop.replace(/\/$/, "");
-
-  // Fetch both reviews and settings
-  const [reviews, settings] = await Promise.all([
-    db.review.findMany({
-      where: { shop: shop, status: "PUBLISHED" },
-      orderBy: { createdAt: "desc" },
-    }),
-    db.settings.findUnique({
-      where: { shop: shop },
-    })
-  ]);
-
-  // Parse the config string back into an object, or use defaults
-  const config = settings ? JSON.parse(settings.config) : {
-    starColor: "#f59e0b", // Default fallback
-    primaryColor: "#3b82f6",
-  };
-
-  return { reviews, config };
-};
-
-export default function HomePage() {
-  const { reviews, config } = useLoaderData();
   
-  const avg = reviews.length > 0
-    ? (reviews.reduce((a, r) => a + r.rating, 0) / reviews.length).toFixed(1)
+  const reviews = await db.review.findMany({ 
+    where: { shop }, 
+    orderBy: { createdAt: "desc" } 
+  });
+
+  const totalReviews = reviews.length;
+  const avgRating = totalReviews > 0 
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews).toFixed(1) 
     : "0.0";
 
-  // Dynamic values from your saved config
-  const starFill = config.starColor || "#f59e0b";
-  const brandColor = config.primaryColor || "#3b82f6";
+  // Metrics Logic
+  const now = new Date();
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const reviewsThisMonth = reviews.filter(r => new Date(r.createdAt) >= firstDayOfMonth).length;
+  const reviewsLastMonth = reviews.filter(r => {
+    const d = new Date(r.createdAt);
+    return d >= firstDayOfLastMonth && d < firstDayOfMonth;
+  }).length;
+
+  const calculateGrowth = (current, previous) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return (((current - previous) / previous) * 100).toFixed(1);
+  };
+
+  const grouped = reviews.reduce((acc, review) => {
+    const key = review.productName || "Unknown Product";
+    if (!acc[key]) {
+      acc[key] = { productName: key, productImage: review.productImage, reviews: [], totalRating: 0 };
+    }
+    acc[key].reviews.push(review);
+    acc[key].totalRating += review.rating;
+    return acc;
+  }, {});
+
+  const products = Object.values(grouped).map(p => ({
+    ...p,
+    avgRating: (p.totalRating / p.reviews.length).toFixed(1),
+    reviewCount: p.reviews.length,
+    latestDate: p.reviews[0].createdAt
+  }));
+
+  return { 
+    products, 
+    stats: {
+      totalReviews,
+      avgRating,
+      reviewsThisMonth,
+      reviewsGrowth: calculateGrowth(reviewsThisMonth, reviewsLastMonth),
+      totalGrowth: 12.5
+    }
+  };
+};
+
+// --- ACTION ---
+export const action = async ({ request }) => {
+  const { session } = await authenticate.admin(request);
+  const formData = await request.formData();
+  const reviewId = formData.get("reviewId");
+  const reply = formData.get("reply");
+  
+  await db.review.update({ 
+    where: { id: reviewId }, 
+    data: { reply, replyDate: new Date() } 
+  });
+  return { ok: true };
+};
+
+// --- MAIN COMPONENT ---
+export default function ReviewsManagement() {
+  const { products, stats } = useLoaderData();
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   return (
     <div style={styles.container}>
-      <div style={styles.mainWrapper}>
-        <div style={styles.statsCard}>
-          <div style={styles.statsContent}>
+      <header style={{ marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#1e293b', margin: '0' }}>Reviews Management</h1>
+        <p style={{ color: '#64748b', margin: '4px 0 0 0' }}>Monitor and manage your store's customer feedback.</p>
+      </header>
+
+      <div style={styles.statsGrid}>
+        <StatCard title="Total Reviews" value={stats.totalReviews.toLocaleString()} icon={<Inbox size={20} color="#3b82f6" />} subtitle={`${stats.totalGrowth}% vs last month`} trend="up" />
+        <StatCard title="Average Rating" value={stats.avgRating} isRating={true} icon={<Star size={20} color="#f59e0b" fill="#f59e0b" />} subtitle="Across all products" />
+        <StatCard title="New This Month" value={stats.reviewsThisMonth} icon={<TrendingUp size={20} color="#10b981" />} subtitle={`${stats.reviewsGrowth}% growth`} trend={stats.reviewsGrowth >= 0 ? "up" : "down"} />
+      </div>
+
+      <div style={styles.tableCard}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead style={{ backgroundColor: '#f8fafc' }}>
+            <tr style={{ textAlign: 'left' }}>
+              <th style={styles.th}>Product</th>
+              <th style={styles.th}>Rating</th>
+              <th style={styles.th}>Reviews</th>
+              <th style={styles.th}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((p) => (
+              <tr key={p.productName} style={styles.tr}>
+                <td style={styles.td}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={styles.imgPlaceholder}>
+                      {p.productImage ? <img src={p.productImage} style={{ width: '100%' }} alt="" /> : <MessageSquare size={18} color="#94a3b8" />}
+                    </div>
+                    <span style={{ fontWeight: '600' }}>{p.productName}</span>
+                  </div>
+                </td>
+                <td style={styles.td}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Star size={14} fill="#f59e0b" stroke="#f59e0b" />
+                    <span style={{ fontWeight: '700' }}>{p.avgRating}</span>
+                  </div>
+                </td>
+                <td style={styles.td}>{p.reviewCount} Reviews</td>
+                <td style={styles.td}>
+                  <button onClick={() => setSelectedProduct(p)} style={styles.viewBtn}>View All <ChevronRight size={14} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {selectedProduct && <ProductReviewsModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />}
+    </div>
+  );
+}
+
+// --- SUB-COMPONENTS ---
+
+function StatCard({ title, value, icon, subtitle, trend, isRating }) {
+  return (
+    <div style={styles.statCard}>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <div>
+          <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 8px 0' }}>{title}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '28px', fontWeight: '800', margin: 0 }}>{value}</h3>
+            {isRating && <Star size={18} fill="#f59e0b" stroke="#f59e0b" />}
+          </div>
+          <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: trend === 'up' ? '#10b981' : '#ef4444', fontWeight: '600' }}>{subtitle}</p>
+        </div>
+        <div style={styles.statIconBox}>{icon}</div>
+      </div>
+    </div>
+  );
+}
+
+function ProductReviewsModal({ product, onClose }) {
+  return (
+    <div style={modalStyles.overlay} onClick={onClose}>
+      <div style={modalStyles.modal} onClick={(e) => e.stopPropagation()}>
+        <div style={modalStyles.header}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={modalStyles.productIcon}><MessageSquare size={20} color="#3b82f6" /></div>
             <div>
-              <h1 style={styles.title}>Customer Insights</h1>
-              <p style={styles.subtitle}>Real-time overview of your store's public feedback.</p>
-            </div>
-            <div style={styles.ratingBox}>
-              <div style={styles.ratingScore}>{avg}</div>
-              <div style={styles.ratingMeta}>
-                <div style={styles.starsRow}>
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Star
-                      key={i}
-                      size={18}
-                      fill={i <= Math.round(avg) ? starFill : "none"}
-                      color={i <= Math.round(avg) ? starFill : "#cbd5e1"}
-                    />
-                  ))}
-                </div>
-                <div style={styles.totalLabel}>
-                  <TrendingUp size={12} style={{marginRight: 4, color: brandColor}} />
-                  {reviews.length} Total Reviews
-                </div>
-              </div>
+              <h2 style={modalStyles.productTitle}>{product.productName}</h2>
+              <p style={modalStyles.subTitle}>Messaging History</p>
             </div>
           </div>
+          <button onClick={onClose} style={modalStyles.closeBtn}><X size={20}/></button>
         </div>
-
-        <div style={styles.listContainer}>
-          <h3 style={styles.sectionTitle}>Recent Activity</h3>
-          {reviews.length === 0 ? (
-            <div style={styles.emptyCard}>No published reviews found.</div>
-          ) : (
-            reviews.map((r) => (
-              <div key={r.id} style={styles.reviewCard}>
-                <div style={styles.reviewMain}>
-                  <div style={styles.authorSection}>
-                    {/* Avatar uses the Brand Primary Color */}
-                    <div style={{...styles.avatar, backgroundColor: brandColor}}>
-                      {r.author ? r.author.charAt(0) : "A"}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={styles.authorHeader}>
-                        <span style={styles.authorName}>{r.author || "Anonymous"}</span>
-                        <span style={styles.verifiedBadge}><CheckCircle size={10} /> Verified</span>
-                      </div>
-                      <div style={styles.productLink}><ShoppingBag size={12} /> {r.productName || "Product"}</div>
-                    </div>
-                    <span style={styles.dateText}>{new Date(r.createdAt).toLocaleDateString()}</span>
-                  </div>
-                  <div style={styles.starRowSmall}>
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <Star 
-                        key={i} 
-                        size={14} 
-                        fill={i <= r.rating ? starFill : "none"} 
-                        color={i <= r.rating ? starFill : "#e2e8f0"} 
-                      />
-                    ))}
-                  </div>
-                  <p style={styles.commentText}>{r.comment}</p>
-                  {r.reply && (
-                    <div style={{...styles.replyBox, borderLeftColor: brandColor}}>
-                      <div style={{...styles.replyHeader, color: brandColor}}>
-                        <MessageCircle size={14} /><span>Store Response</span>
-                      </div>
-                      <p style={styles.replyContent}>{r.reply}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
+        
+        <div style={modalStyles.scrollArea}>
+          {product.reviews.map((rev) => (
+            <ReviewChatItem key={rev.id} review={rev} />
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
+function ReviewChatItem({ review }) {
+  const fetcher = useFetcher();
+  const [isEditing, setIsEditing] = useState(!review.reply);
+  const [replyText, setReplyText] = useState(review.reply || "");
+
+  const handleSave = () => {
+    if (!replyText.trim()) return;
+    fetcher.submit({ reviewId: review.id, reply: replyText }, { method: "POST" });
+    setIsEditing(false);
+  };
+
+  return (
+    <div style={chatStyles.thread}>
+      {/* 1. CUSTOMER BUBBLE (LEFT) */}
+      <div style={chatStyles.rowLeft}>
+        <div style={chatStyles.avatar}><User size={16} color="#64748b"/></div>
+        <div style={{ maxWidth: '80%' }}>
+          <div style={chatStyles.metaLeft}>
+            <span style={chatStyles.name}>{review.author || "Customer"}</span>
+            <span style={chatStyles.time}>{new Date(review.createdAt).toLocaleDateString()}</span>
+          </div>
+          <div style={chatStyles.bubbleLeft}>
+            <div style={chatStyles.starRow}>
+              {[...Array(5)].map((_, i) => <Star key={i} size={10} fill={i < review.rating ? "#f59e0b" : "none"} stroke="#f59e0b" />)}
+            </div>
+            {review.comment}
+          </div>
+        </div>
+      </div>
+
+      {/* 2. STORE BUBBLE (RIGHT) */}
+      <div style={chatStyles.rowRight}>
+        <div style={{ maxWidth: '80%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+          <div style={chatStyles.metaRight}>
+             {!isEditing && (
+              <button onClick={() => setIsEditing(true)} style={chatStyles.editBtn}>
+                <Edit2 size={12}/> Edit
+              </button>
+            )}
+            <span style={{ ...chatStyles.name, color: '#008060' }}>Store Response</span>
+          </div>
+
+          {isEditing ? (
+            <div style={chatStyles.inputContainer}>
+              <textarea 
+                style={chatStyles.replyInput} 
+                value={replyText} 
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder="Type your reply..."
+              />
+              <button style={chatStyles.sendBtn} onClick={handleSave} disabled={fetcher.state === "submitting"}>
+                {fetcher.state === "submitting" ? "..." : <Send size={16} />}
+              </button>
+            </div>
+          ) : (
+            <div style={chatStyles.bubbleRight}>
+              {review.reply}
+              <div style={{ textAlign: 'right', marginTop: '4px' }}>
+                <CheckCircle2 size={12} color="#008060" style={{ opacity: 0.6 }} />
+              </div>
+            </div>
+          )}
+        </div>
+        <div style={{ ...chatStyles.avatar, backgroundColor: '#008060' }}><Store size={16} color="#fff"/></div>
+      </div>
+    </div>
+  );
+}
+
+// --- STYLES ---
 const styles = {
-  container: { fontFamily: "'Inter', sans-serif", backgroundColor: "#f8fafc", color: "#0f172a", minHeight: "100vh", padding: "60px 20px" },
-  mainWrapper: { maxWidth: "850px", margin: "0 auto" },
-  statsCard: { backgroundColor: "#ffffff", borderRadius: "20px", padding: "32px", boxShadow: "0 4px 6px rgba(0,0,0,0.05)", marginBottom: "48px", border: "1px solid #e2e8f0" },
-  statsContent: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "24px" },
-  title: { fontSize: "30px", fontWeight: "800", margin: "0 0 8px 0", color: "#1e293b" },
-  subtitle: { color: "#64748b", fontSize: "16px", margin: 0 },
-  ratingBox: { display: "flex", alignItems: "center", gap: "24px", backgroundColor: "#f1f5f9", padding: "20px 28px", borderRadius: "16px", border: "1px solid #e2e8f0" },
-  ratingScore: { fontSize: "48px", fontWeight: "800", color: "#0f172a" },
-  ratingMeta: { display: "flex", flexDirection: "column", gap: "6px" },
-  starsRow: { display: "flex", gap: "3px" },
-  totalLabel: { fontSize: "13px", color: "#64748b", fontWeight: "600", display: "flex", alignItems: "center" },
-  sectionTitle: { fontSize: "12px", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", marginBottom: "20px" },
-  listContainer: { display: "flex", flexDirection: "column", gap: "20px" },
-  emptyCard: { textAlign: "center", padding: "60px", color: "#94a3b8", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px dashed #e2e8f0" },
-  reviewCard: { backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" },
-  reviewMain: { padding: "28px" },
-  authorSection: { display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" },
-  avatar: { width: "44px", height: "44px", borderRadius: "12px", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700", fontSize: "18px" },
-  authorHeader: { display: "flex", alignItems: "center", gap: "10px" },
-  authorName: { fontWeight: "700", fontSize: "16px", color: "#1e293b" },
-  verifiedBadge: { display: "flex", alignItems: "center", gap: "4px", fontSize: "10px", fontWeight: "700", color: "#059669", backgroundColor: "#ecfdf5", padding: "2px 8px", borderRadius: "6px" },
-  productLink: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#64748b", marginTop: "4px" },
-  dateText: { fontSize: "13px", color: "#94a3b8", marginLeft: "auto" },
-  starRowSmall: { display: "flex", gap: "3px", marginBottom: "14px" },
-  commentText: { fontSize: "15px", lineHeight: "1.7", color: "#475569", margin: "0 0 20px 0" },
-  replyBox: { backgroundColor: "#f8fafc", borderLeft: "4px solid", borderRadius: "8px", padding: "16px 20px", marginTop: "10px", border: "1px solid #e2e8f0" },
-  replyHeader: { display: "flex", alignItems: "center", gap: "8px", fontSize: "11px", fontWeight: "800", textTransform: "uppercase" },
-  replyContent: { fontSize: "14px", color: "#64748b", margin: 0, fontStyle: "italic" },
+  container: { padding: "40px", backgroundColor: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', sans-serif" },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' },
+  statCard: { backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' },
+  statIconBox: { padding: '10px', backgroundColor: '#f1f5f9', borderRadius: '12px', height: 'fit-content' },
+  tableCard: { backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' },
+  th: { padding: '16px 20px', fontSize: '12px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase' },
+  td: { padding: '16px 20px', fontSize: '14px', color: '#475569' },
+  tr: { borderBottom: '1px solid #f1f5f9' },
+  imgPlaceholder: { width: '40px', height: '40px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  viewBtn: { display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#fff', cursor: 'pointer', fontWeight: '700' },
+};
+
+const modalStyles = {
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 },
+  modal: { background: '#fff', borderRadius: '24px', width: '650px', height: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' },
+  header: { padding: '24px 32px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  productIcon: { padding: '10px', backgroundColor: '#eff6ff', borderRadius: '12px' },
+  productTitle: { margin: 0, fontSize: '18px', fontWeight: '800' },
+  subTitle: { margin: 0, fontSize: '13px', color: '#64748b' },
+  scrollArea: { padding: '32px', overflowY: 'auto', flex: 1, backgroundColor: '#f8fafc' },
+  closeBtn: { padding: '8px', borderRadius: '50%', border: 'none', backgroundColor: '#f1f5f9', cursor: 'pointer' }
+};
+
+const chatStyles = {
+  thread: { display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '40px' },
+  rowLeft: { display: 'flex', gap: '12px', justifyContent: 'flex-start' },
+  rowRight: { display: 'flex', gap: '12px', justifyContent: 'flex-end' },
+  avatar: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  metaLeft: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px' },
+  metaRight: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px', flexDirection: 'row-reverse' },
+  name: { fontSize: '13px', fontWeight: '700', color: '#1e293b' },
+  time: { fontSize: '11px', color: '#94a3b8' },
+  bubbleLeft: { padding: '12px 16px', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0 16px 16px 16px', fontSize: '14px', lineHeight: '1.5', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
+  bubbleRight: { padding: '12px 16px', backgroundColor: '#e6f3f0', border: '1px solid #00806033', borderRadius: '16px 0 16px 16px', fontSize: '14px', color: '#004d3a', lineHeight: '1.5' },
+  starRow: { display: 'flex', gap: '2px', marginBottom: '4px' },
+  inputContainer: { position: 'relative', width: '320px' },
+  replyInput: { width: '100%', padding: '12px 45px 12px 16px', borderRadius: '16px', border: '2px solid #008060', fontSize: '14px', outline: 'none', resize: 'none', height: '80px', fontFamily: 'inherit' },
+  sendBtn: { position: 'absolute', right: '10px', bottom: '10px', backgroundColor: '#008060', color: '#fff', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  editBtn: { background: 'none', border: 'none', color: '#94a3b8', fontSize: '11px', cursor: 'pointer', fontWeight: '600' }
 };

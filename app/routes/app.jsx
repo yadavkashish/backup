@@ -16,7 +16,7 @@ export default function App() {
     <AppProvider embedded apiKey={apiKey}>
       <s-app-nav>
         
-        <s-link href="/app/reviews">Reviews Management</s-link>
+        
         {/* New Navigation Link */}
         <s-link href="/app/review-form">Review Form</s-link>
         

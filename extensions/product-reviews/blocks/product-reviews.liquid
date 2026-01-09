@@ -7,196 +7,229 @@
 
 <script>
 async function initProductReviews() {
-    const root = document.querySelector("#app-reviews-root");
-    if (!root) return;
+  const root = document.querySelector("#app-reviews-root");
+  if (!root) return;
 
-    const shop = root.dataset.shop;
-    const productId = root.dataset.productId;
-    const productName = root.dataset.productName;
-    const API = "https://judgme.onrender.com"; 
+  const shop = root.dataset.shop;
+  const productId = root.dataset.productId;
+  const productName = root.dataset.productName;
+  const API = "https://judgme.onrender.com";
 
-    try {
-        const [settingsRes, reviewsRes] = await Promise.all([
-            fetch(`${API}/api/public/settings?shop=${shop}`),
-            fetch(`${API}/api/public/reviews?productId=${productId}&shop=${shop}`)
-        ]);
+  try {
+    const [settingsRes, reviewsRes] = await Promise.all([
+      fetch(`${API}/api/public/settings?shop=${shop}`),
+      fetch(`${API}/api/public/reviews?productId=${productId}&shop=${shop}`)
+    ]);
 
-        const settingsData = await settingsRes.json();
-        const reviewsData = await reviewsRes.json();
+    const settingsData = await settingsRes.json();
+    const reviewsData = await reviewsRes.json();
 
-        const cfg = settingsData.config || {
-            primaryColor: "#4A90E2",
-            secondaryColor: "#64748b",
-            starColor: "#fbbf24",
-            buttonColor: "#008060",
-            borderRadius: 12,
-            shadowDepth: 4,
-            fontSize: 14,
-            showRatings: true
-        };
+    const cfg = settingsData.config || {
+      starColor: "#f97316",
+      buttonColor: "#2563eb",
+      fontSize: 14
+    };
 
-        const styleTag = document.createElement('style');
-        styleTag.innerHTML = `
-            :root {
-                --jd-primary: ${cfg.primaryColor};
-                --jd-star: ${cfg.starColor};
-                --jd-btn: ${cfg.buttonColor};
-                --jd-text: ${cfg.secondaryColor};
-                --jd-radius: ${cfg.borderRadius}px;
-                --jd-shadow: 0 ${cfg.shadowDepth}px ${cfg.shadowDepth * 4}px rgba(0,0,0,0.1);
-            }
-            .jd-button-row { display: flex; gap: 12px; margin: 20px auto; max-width: 640px; }
-            .jd-trigger-btn { 
-                flex: 1; padding: 12px; border: 1px solid #e2e8f0; background: white; 
-                border-radius: var(--jd-radius); cursor: pointer; font-weight: 700; 
-                font-family: inherit; font-size: 14px; transition: all 0.2s;
-            }
-            .jd-trigger-btn:hover { background: #f8fafc; border-color: var(--jd-primary); }
-            .jd-trigger-btn.active { border-color: var(--jd-primary); color: var(--jd-primary); background: #f0f7ff; }
+    const style = document.createElement("style");
+    style.innerHTML = `
+      .jd-wrapper {
+        display: flex;
+        gap: 40px;
+        align-items: flex-start;
+        font-family: Arial, system-ui, sans-serif;
+        font-size: ${cfg.fontSize}px;
+        color: #111;
+        margin: 40px 0;
+      }
 
-            #jd-form-wrap, #jd-list-wrap { display: none; }
+      .jd-left { width: 60%; }
+      .jd-right {
+        width: 40%;
+        display: none;
+        border-left: 1px solid #e5e7eb;
+        padding-left: 32px;
+      }
 
-            .jd-card { 
-                background: #fff; padding: 40px; border: 1px solid #e2e8f0;
-                border-radius: var(--jd-radius); box-shadow: var(--jd-shadow);
-                color: var(--jd-text); font-size: ${cfg.fontSize}px;
-                font-family: 'Inter', -apple-system, sans-serif; max-width: 640px; margin: 0 auto 40px auto;
-            }
-            .jd-btn { 
-                background: var(--jd-btn); color: white; padding: 14px; 
-                border-radius: calc(var(--jd-radius) / 1.5); width: 100%; 
-                border: none; cursor: pointer; font-weight: 700; margin-top: 20px;
-                transition: opacity 0.2s;
-            }
-            .jd-btn:hover { opacity: 0.9; }
-            .jd-input { 
-                width: 100%; padding: 12px; margin: 8px 0 16px 0; border: 1px solid #e2e8f0;
-                border-radius: calc(var(--jd-radius) / 1.5); color: var(--jd-text);
-                font-size: inherit; outline: none; box-sizing: border-box;
-            }
-            .jd-star-row { font-size: 32px; color: var(--jd-star); cursor: pointer; margin-bottom: 24px; }
-        `;
-        document.head.appendChild(styleTag);
+      .jd-title { font-size: 22px; font-weight: 700; margin-bottom: 16px; }
 
-        root.innerHTML = `
-            <div class="jd-button-row">
-                <button class="jd-trigger-btn" id="btn-write-trigger"> Write a Review</button>
-                <button class="jd-trigger-btn" id="btn-view-trigger">View Reviews (${reviewsData.length})</button>
-            </div>
+      .jd-review {
+        padding: 24px 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
 
-            <div id="jd-form-wrap">
-                <div class="jd-card">
-                    <div style="text-align:center; margin-bottom: 32px;">
-                        <div style="font-size: 40px; color: var(--jd-star); margin-bottom: 12px;">★</div>
-                        <h2 style="margin: 0; font-size: 24px; font-weight: 800;">Write a Review</h2>
-                        <p style="opacity: 0.7;">Help others by sharing your experience.</p>
-                    </div>
+      .jd-review-header {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
 
-                    ${cfg.showRatings ? `
-                        <label style="font-weight:700;">Your Rating *</label>
-                        <div id="star-input" class="jd-star-row">
-                            ${[1,2,3,4,5].map(i => `<span data-v="${i}">★</span>`).join('')}
-                        </div>
-                    ` : ''}
+      .jd-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+      }
 
-                    <label style="font-weight:700;">Name</label>
-                    <input id="author-field" class="jd-input" placeholder="e.g. Jane Doe" />
+      .jd-author { font-weight: 700; }
 
-                    <label style="font-weight:700;">Detailed Review *</label>
-                    <textarea id="comment-field" class="jd-input" style="height:100px; resize: none;" placeholder="Tell us more..."></textarea>
+      .jd-stars {
+        color: ${cfg.starColor};
+        font-size: 14px;
+        margin: 4px 0;
+      }
 
-                    <button id="submitBtn" class="jd-btn">Submit Review</button>
-                    <p id="form-msg" style="margin-top:10px; text-align:center; font-weight:600;"></p>
+      .jd-meta {
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 8px;
+      }
+
+      .jd-write-btn {
+        margin: 24px 0;
+        padding: 12px 18px;
+        border-radius: 999px;
+        border: 1px solid #111;
+        background: #fff;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .jd-input {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0 16px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        box-sizing: border-box;
+      }
+
+      .jd-submit {
+        width: 100%;
+        padding: 12px;
+        background: ${cfg.buttonColor};
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .jd-star-input span {
+        font-size: 28px;
+        cursor: pointer;
+        color: ${cfg.starColor};
+        opacity: 0.3;
+      }
+    `;
+    document.head.appendChild(style);
+
+    root.innerHTML = `
+      <div class="jd-wrapper">
+        <div class="jd-left">
+          <div class="jd-title">Customer reviews</div>
+          <button id="openFormBtn" class="jd-write-btn">Write a product review</button>
+
+          <div id="reviews-container">
+            ${reviewsData.length === 0 ? `<p>No reviews yet.</p>` : reviewsData.map(r => `
+              <div class="jd-review">
+                <div class="jd-review-header">
+                  <div class="jd-avatar">${r.author.charAt(0).toUpperCase()}</div>
+                  <div class="jd-author">${r.author}</div>
                 </div>
-            </div>
-
-            <div id="jd-list-wrap">
-                <div class="jd-card">
-                    <h3 style="font-size: 14px; color: #94a3b8; text-transform: uppercase; margin-bottom: 20px;">Recent Activity</h3>
-                    <div id="reviews-list">
-                        ${reviewsData.length === 0 ? '<p>No reviews yet. Be the first!</p>' : reviewsData.map(r => `
-                            <div style="padding: 20px 0; border-bottom: 1px solid #f8fafc;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <strong>${r.author}</strong>
-                                    <span style="font-size: 11px; color: #94a3b8;">${new Date(r.createdAt).toLocaleDateString()}</span>
-                                </div>
-                                <div style="color:var(--jd-star); margin: 4px 0;">${'★'.repeat(r.rating)}</div>
-                                <p style="margin: 5px 0 10px 0; line-height: 1.5;">${r.comment}</p>
-                                ${r.reply ? `
-                                    <div style="margin-top: 15px; margin-left: 20px; padding: 12px 16px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid var(--jd-btn);">
-                                        <span style="font-size: 12px; font-weight: 800; color: var(--jd-btn);">STORE RESPONSE</span>
-                                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #334155;">${r.reply}</p>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        `).join('')}
-                    </div>
+                <div class="jd-stars">
+                  ${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}
                 </div>
-            </div>
-        `;
+                <div class="jd-meta">
+                  Reviewed on ${new Date(r.createdAt).toLocaleDateString()}
+                  · <span style="color:#f97316;font-weight:700">Verified Purchase</span>
+                </div>
+                <div>${r.comment}</div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
 
-        const formWrap = root.querySelector("#jd-form-wrap");
-        const listWrap = root.querySelector("#jd-list-wrap");
-        const btnWrite = root.querySelector("#btn-write-trigger");
-        const btnView = root.querySelector("#btn-view-trigger");
+        <div class="jd-right" id="reviewForm">
+          <h3>Review this product</h3>
+          <label>Your Rating *</label>
+          <div class="jd-star-input" id="starInput">
+            ${[1,2,3,4,5].map(i => `<span data-v="${i}">★</span>`).join("")}
+          </div>
+          <label>Name</label>
+          <input id="author-field" class="jd-input" placeholder="Your name">
+          <label>Write your review *</label>
+          <textarea id="comment-field" class="jd-input" style="height:120px"></textarea>
+          <button id="submitBtn" class="jd-submit">Submit Review</button>
+          <p id="form-msg" style="margin-top:10px; text-align:center;"></p>
+        </div>
+      </div>
+    `;
 
-        btnWrite.onclick = () => {
-            formWrap.style.display = "block";
-            listWrap.style.display = "none";
-            btnWrite.classList.add("active");
-            btnView.classList.remove("active");
-        };
+    document.getElementById("openFormBtn").onclick = () => {
+      document.getElementById("reviewForm").style.display = "block";
+    };
 
-        btnView.onclick = () => {
-            listWrap.style.display = "block";
-            formWrap.style.display = "none";
-            btnView.classList.add("active");
-            btnWrite.classList.remove("active");
-        };
+    let currentRating = 5;
+    const stars = document.querySelectorAll("#starInput span");
+    const updateStars = (val) => {
+      stars.forEach(s => s.style.opacity = s.dataset.v <= val ? "1" : "0.3");
+    };
 
-        let currentRating = 5;
-        const stars = root.querySelectorAll("#star-input span");
-        stars.forEach(s => s.onclick = () => {
-            currentRating = s.dataset.v;
-            stars.forEach(star => star.style.opacity = star.dataset.v <= currentRating ? "1" : "0.3");
+    stars.forEach(star => {
+      star.onclick = () => {
+        currentRating = star.dataset.v;
+        updateStars(currentRating);
+      };
+    });
+    updateStars(5);
+
+    document.getElementById("submitBtn").onclick = async () => {
+      const author = document.getElementById("author-field").value;
+      const comment = document.getElementById("comment-field").value;
+      const msg = document.getElementById("form-msg");
+
+      if (!comment) {
+        msg.style.color = "red";
+        msg.innerText = "Please write a review.";
+        return;
+      }
+
+      msg.style.color = "black";
+      msg.innerText = "Submitting...";
+
+      try {
+        const res = await fetch(`${API}/api/public/reviews`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            shop, productId, productName,
+            rating: currentRating,
+            author: author || "Anonymous",
+            comment
+          })
         });
 
-        root.querySelector("#submitBtn").onclick = async () => {
-            const author = root.querySelector("#author-field").value;
-            const comment = root.querySelector("#comment-field").value;
-            const msg = root.querySelector("#form-msg");
+        if (res.ok) {
+          msg.style.color = "green";
+          msg.innerText = "Thanks for your review!";
+          setTimeout(() => initProductReviews(), 1500);
+        } else {
+          throw new Error();
+        }
+      } catch {
+        msg.style.color = "red";
+        msg.innerText = "Error submitting review.";
+      }
+    };
 
-            if(!comment) {
-                msg.style.color = "red";
-                return msg.innerText = "Please write a comment.";
-            }
-
-            root.querySelector("#submitBtn").innerText = "Submitting...";
-            root.querySelector("#submitBtn").disabled = true;
-
-            try {
-                const res = await fetch(`${API}/api/public/submit-review`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ shop, productId, productName, rating: currentRating, author: author || "Anonymous", comment })
-                });
-
-                if(res.ok) {
-                    msg.style.color = "#10b981";
-                    msg.innerText = "Thanks for your review!";
-                    setTimeout(() => initProductReviews(), 2000);
-                }
-            } catch (err) {
-                msg.style.color = "red";
-                msg.innerText = "Error submitting review.";
-                root.querySelector("#submitBtn").innerText = "Submit Review";
-                root.querySelector("#submitBtn").disabled = false;
-            }
-        };
-
-    } catch (e) {
-        console.error("Widget Error:", e);
-    }
+  } catch (e) {
+    console.error("Widget Error", e);
+  }
 }
 initProductReviews();
 </script>
@@ -207,7 +240,12 @@ initProductReviews();
   "name": "Product Reviews",
   "target": "section",
   "settings": [
-    { "type": "checkbox", "id": "enable", "label": "Enable reviews", "default": true }
+    {
+      "type": "checkbox",
+      "id": "enable",
+      "label": "Enable reviews",
+      "default": true
+    }
   ]
 }
 {% endschema %}
