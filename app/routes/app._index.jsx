@@ -1,10 +1,6 @@
 import { useLoaderData, useFetcher } from "react-router";
-
-
 import { authenticate } from "../shopify.server";
-
-
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Added useEffect
 import { 
   Star, 
   X, 
@@ -16,12 +12,15 @@ import {
   Store,
   TrendingUp,
   Inbox,
-  CheckCircle2
+  CheckCircle2,
+  HelpCircle, // New icon
+  ExternalLink,
+  Info
 } from "lucide-react";
 
 import db from "../db.server";
 
-// --- LOADER ---
+// --- LOADER & ACTION (Keep your existing logic) ---
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop.replace(/\/$/, "");
@@ -36,7 +35,6 @@ export const loader = async ({ request }) => {
     ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews).toFixed(1) 
     : "0.0";
 
-  // Metrics Logic
   const now = new Date();
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -80,7 +78,6 @@ export const loader = async ({ request }) => {
   };
 };
 
-// --- ACTION ---
 export const action = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const formData = await request.formData();
@@ -98,13 +95,35 @@ export const action = async ({ request }) => {
 export default function ReviewsManagement() {
   const { products, stats } = useLoaderData();
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showInstructions, setShowInstructions] = useState(false);
+
+  // Auto-show instructions if it's the first time (optional: use localStorage)
+  useEffect(() => {
+    const hasSeen = localStorage.getItem("hasSeenInstructions");
+    if (!hasSeen) {
+      setShowInstructions(true);
+    }
+  }, []);
+
+  const closeInstructions = () => {
+    localStorage.setItem("hasSeenInstructions", "true");
+    setShowInstructions(false);
+  };
 
   return (
     <div style={styles.container}>
-      <header style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#1e293b', margin: '0' }}>Reviews Management</h1>
-        <p style={{ color: '#64748b', margin: '4px 0 0 0' }}>Monitor and manage your store's customer feedback.</p>
+      <header style={styles.headerLayout}>
+        <div>
+          <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#1e293b', margin: '0' }}>Reviews Management</h1>
+          <p style={{ color: '#64748b', margin: '4px 0 0 0' }}>Monitor and manage your store's customer feedback.</p>
+        </div>
+        <button onClick={() => setShowInstructions(true)} style={styles.helpBtn}>
+          <HelpCircle size={18} /> Setup Instructions
+        </button>
       </header>
+
+      {/* Instruction Modal */}
+      {showInstructions && <InstructionModal onClose={closeInstructions} />}
 
       <div style={styles.statsGrid}>
         <StatCard title="Total Reviews" value={stats.totalReviews.toLocaleString()} icon={<Inbox size={20} color="#3b82f6" />} subtitle={`${stats.totalGrowth}% vs last month`} trend="up" />
@@ -154,7 +173,44 @@ export default function ReviewsManagement() {
   );
 }
 
-// --- SUB-COMPONENTS ---
+// --- NEW INSTRUCTION MODAL COMPONENT ---
+function InstructionModal({ onClose }) {
+  const steps = [
+    { title: "Open Theme Editor", desc: "Go to Online Store → Themes → Edit theme" },
+    { title: "Select Product Page", desc: "Select 'Products' then 'Default product' from the top dropdown." },
+    { title: "Add Reviews Block", desc: "Click 'Add block' in the sidebar and select 'Product Reviews'." },
+    { title: "Save & Launch", desc: "Drag the block under your description and hit Save!" }
+  ];
+
+  return (
+    <div style={modalStyles.overlay} onClick={onClose}>
+      <div style={{...modalStyles.modal, height: 'auto', maxWidth: '500px'}} onClick={(e) => e.stopPropagation()}>
+        <div style={modalStyles.header}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{...modalStyles.productIcon, backgroundColor: '#f0fdf4'}}><Info size={20} color="#16a34a" /></div>
+            <h2 style={modalStyles.productTitle}>Setup Instructions</h2>
+          </div>
+          <button onClick={onClose} style={modalStyles.closeBtn}><X size={20}/></button>
+        </div>
+        <div style={{ padding: '24px' }}>
+          {steps.map((step, index) => (
+            <div key={index} style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
+              <div style={instrStyles.stepBadge}>{index + 1}</div>
+              <div>
+                <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '700' }}>{step.title}</h4>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b', lineHeight: '1.4' }}>{step.desc}</p>
+              </div>
+            </div>
+          ))}
+          <button onClick={onClose} style={instrStyles.finishBtn}>Got it, let's go!</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- SUB-COMPONENTS (StatCard, ProductReviewsModal, ReviewChatItem remain the same as your code) ---
+// ... [Keep your existing StatCard, ProductReviewsModal, ReviewChatItem code here] ...
 
 function StatCard({ title, value, icon, subtitle, trend, isRating }) {
   return (
@@ -212,7 +268,6 @@ function ReviewChatItem({ review }) {
 
   return (
     <div style={chatStyles.thread}>
-      {/* 1. CUSTOMER BUBBLE (LEFT) */}
       <div style={chatStyles.rowLeft}>
         <div style={chatStyles.avatar}><User size={16} color="#64748b"/></div>
         <div style={{ maxWidth: '80%' }}>
@@ -229,7 +284,6 @@ function ReviewChatItem({ review }) {
         </div>
       </div>
 
-      {/* 2. STORE BUBBLE (RIGHT) */}
       <div style={chatStyles.rowRight}>
         <div style={{ maxWidth: '80%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
           <div style={chatStyles.metaRight}>
@@ -268,9 +322,11 @@ function ReviewChatItem({ review }) {
   );
 }
 
-// --- STYLES ---
+// --- UPDATED STYLES ---
 const styles = {
   container: { padding: "40px", backgroundColor: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', sans-serif" },
+  headerLayout: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' },
+  helpBtn: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', color: '#475569', fontSize: '14px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
   statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' },
   statCard: { backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' },
   statIconBox: { padding: '10px', backgroundColor: '#f1f5f9', borderRadius: '12px', height: 'fit-content' },
@@ -280,6 +336,11 @@ const styles = {
   tr: { borderBottom: '1px solid #f1f5f9' },
   imgPlaceholder: { width: '40px', height: '40px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   viewBtn: { display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#fff', cursor: 'pointer', fontWeight: '700' },
+};
+
+const instrStyles = {
+  stepBadge: { width: '28px', height: '28px', backgroundColor: '#3b82f6', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 'bold', flexShrink: 0 },
+  finishBtn: { width: '100%', marginTop: '12px', padding: '12px', backgroundColor: '#1e293b', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '600', cursor: 'pointer' }
 };
 
 const modalStyles = {
