@@ -64,7 +64,7 @@ export async function action({ request }) {
       rating: Number(rating),
       comment,
       author: author?.trim() || "Anonymous",
-      status: "PUBLISHED",
+      
     },
   });
 

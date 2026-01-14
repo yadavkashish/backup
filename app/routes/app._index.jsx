@@ -73,7 +73,7 @@ export const loader = async ({ request }) => {
       avgRating,
       reviewsThisMonth,
       reviewsGrowth: calculateGrowth(reviewsThisMonth, reviewsLastMonth),
-      totalGrowth: 12.5
+      
     }
   };
 };
