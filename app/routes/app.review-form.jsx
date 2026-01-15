@@ -173,7 +173,7 @@ export default function ReviewEditor() {
 
           <SideSection title="Theming" icon={<Palette size={16} />}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <ColorInput label="Brand" value={config.primaryColor} onChange={(v) => updateConfig("primaryColor", v)} />
+             
               <ColorInput label="Stars" value={config.starColor} onChange={(v) => updateConfig("starColor", v)} />
               <ColorInput label="Buttons" value={config.buttonColor} onChange={(v) => updateConfig("buttonColor", v)} />
               <ColorInput label="Typography" value={config.secondaryColor} onChange={(v) => updateConfig("secondaryColor", v)} />
