@@ -128,7 +128,7 @@ export default function ReviewsManagement() {
       <div style={styles.statsGrid}>
         <StatCard title="Total Reviews" value={stats.totalReviews.toLocaleString()} icon={<Inbox size={20} color="#3b82f6" />}  trend="up" />
         <StatCard title="Average Rating" value={stats.avgRating} isRating={true} icon={<Star size={20} color="#f59e0b" fill="#f59e0b" />} subtitle="Across all products" />
-        <StatCard title="New This Month" value={stats.reviewsThisMonth} icon={<TrendingUp size={20} color="#10b981" />} subtitle={`${stats.reviewsGrowth}% growth`} trend={stats.reviewsGrowth >= 0 ? "up" : "down"} />
+        <StatCard title="New This Month" value={stats.reviewsThisMonth} icon={<TrendingUp size={20} color="#10b981" />} trend={stats.reviewsGrowth >= 0 ? "up" : "down"} />
       </div>
 
       <div style={styles.tableCard}>
