@@ -1,6 +1,6 @@
 import { useLoaderData, useFetcher } from "react-router";
 import { authenticate } from "../shopify.server";
-import { useState, useEffect } from "react"; // Added useEffect
+import { useState, useEffect } from "react";
 import { 
   Star, 
   X, 
@@ -13,14 +13,13 @@ import {
   TrendingUp,
   Inbox,
   CheckCircle2,
-  HelpCircle, // New icon
-  ExternalLink,
+  HelpCircle,
   Info
 } from "lucide-react";
 
 import db from "../db.server";
 
-// --- LOADER & ACTION (Keep your existing logic) ---
+// --- LOADER & ACTION ---
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop.replace(/\/$/, "");
@@ -73,7 +72,6 @@ export const loader = async ({ request }) => {
       avgRating,
       reviewsThisMonth,
       reviewsGrowth: calculateGrowth(reviewsThisMonth, reviewsLastMonth),
-      
     }
   };
 };
@@ -94,10 +92,15 @@ export const action = async ({ request }) => {
 // --- MAIN COMPONENT ---
 export default function ReviewsManagement() {
   const { products, stats } = useLoaderData();
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  
+  // FIX 1: Store only the ID/Name of the product, not the whole object.
+  // This ensures that when the loader re-runs, we find the NEWEST data from the products array.
+  const [selectedProductName, setSelectedProductName] = useState(null);
   const [showInstructions, setShowInstructions] = useState(false);
 
-  // Auto-show instructions if it's the first time (optional: use localStorage)
+  // Derive the active product from the fresh "products" array provided by useLoaderData
+  const activeProduct = products.find(p => p.productName === selectedProductName);
+
   useEffect(() => {
     const hasSeen = localStorage.getItem("hasSeenInstructions");
     if (!hasSeen) {
@@ -122,11 +125,10 @@ export default function ReviewsManagement() {
         </button>
       </header>
 
-      {/* Instruction Modal */}
       {showInstructions && <InstructionModal onClose={closeInstructions} />}
 
       <div style={styles.statsGrid}>
-        <StatCard title="Total Reviews" value={stats.totalReviews.toLocaleString()} icon={<Inbox size={20} color="#3b82f6" />}  trend="up" />
+        <StatCard title="Total Reviews" value={stats.totalReviews.toLocaleString()} icon={<Inbox size={20} color="#3b82f6" />} trend="up" />
         <StatCard title="Average Rating" value={stats.avgRating} isRating={true} icon={<Star size={20} color="#f59e0b" fill="#f59e0b" />} subtitle="Across all products" />
         <StatCard title="New This Month" value={stats.reviewsThisMonth} icon={<TrendingUp size={20} color="#10b981" />} trend={stats.reviewsGrowth >= 0 ? "up" : "down"} />
       </div>
@@ -160,7 +162,7 @@ export default function ReviewsManagement() {
                 </td>
                 <td style={styles.td}>{p.reviewCount} Reviews</td>
                 <td style={styles.td}>
-                  <button onClick={() => setSelectedProduct(p)} style={styles.viewBtn}>View All <ChevronRight size={14} /></button>
+                  <button onClick={() => setSelectedProductName(p.productName)} style={styles.viewBtn}>View All <ChevronRight size={14} /></button>
                 </td>
               </tr>
             ))}
@@ -168,12 +170,117 @@ export default function ReviewsManagement() {
         </table>
       </div>
 
-      {selectedProduct && <ProductReviewsModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />}
+      {activeProduct && <ProductReviewsModal product={activeProduct} onClose={() => setSelectedProductName(null)} />}
     </div>
   );
 }
 
-// --- NEW INSTRUCTION MODAL COMPONENT ---
+// --- SUB-COMPONENTS ---
+
+function ProductReviewsModal({ product, onClose }) {
+  return (
+    <div style={modalStyles.overlay} onClick={onClose}>
+      <div style={modalStyles.modal} onClick={(e) => e.stopPropagation()}>
+        <div style={modalStyles.header}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={modalStyles.productIcon}><MessageSquare size={20} color="#3b82f6" /></div>
+            <div>
+              <h2 style={modalStyles.productTitle}>{product.productName}</h2>
+              <p style={modalStyles.subTitle}>Messaging History</p>
+            </div>
+          </div>
+          <button onClick={onClose} style={modalStyles.closeBtn}><X size={20}/></button>
+        </div>
+        
+        <div style={modalStyles.scrollArea}>
+          {product.reviews.map((rev) => (
+            // FIX 2: Added a dynamic key. If the reply changes, this specific item resets.
+            <ReviewChatItem key={`${rev.id}-${rev.reply}`} review={rev} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewChatItem({ review }) {
+  const fetcher = useFetcher();
+  const [isEditing, setIsEditing] = useState(!review.reply);
+  const [replyText, setReplyText] = useState(review.reply || "");
+
+  const isSubmitting = fetcher.state === "submitting";
+
+  const handleSave = () => {
+    if (!replyText.trim()) return;
+    fetcher.submit({ reviewId: review.id, reply: replyText }, { method: "POST" });
+    // We don't need to manually set isEditing(false) because the key change 
+    // in the parent (ProductReviewsModal) will re-mount this component with the new data.
+  };
+
+  return (
+    <div style={chatStyles.thread}>
+      <div style={chatStyles.rowLeft}>
+        <div style={chatStyles.avatar}><User size={16} color="#64748b"/></div>
+        <div style={chatStyles.contentWrapper}>
+          <div style={chatStyles.metaLeft}>
+            <span style={chatStyles.name}>{review.author || "Customer"}</span>
+            <span style={chatStyles.time}>{new Date(review.createdAt).toLocaleDateString()}</span>
+          </div>
+          <div style={chatStyles.bubbleLeft}>
+            <div style={chatStyles.starRow}>
+              {[...Array(5)].map((_, i) => <Star key={i} size={10} fill={i < review.rating ? "#f59e0b" : "none"} stroke="#f59e0b" />)}
+            </div>
+            {review.comment}
+          </div>
+        </div>
+      </div>
+
+      <div style={chatStyles.rowRight}>
+        <div style={chatStyles.contentWrapper}>
+          <div style={chatStyles.metaRight}>
+             {!isEditing && review.reply && (
+              <button onClick={() => setIsEditing(true)} style={chatStyles.editBtn}>
+                <Edit2 size={12}/> Edit Reply
+              </button>
+            )}
+            <span style={{ ...chatStyles.name, color: '#008060' }}>Store Response</span>
+          </div>
+
+          {isEditing ? (
+            <div style={chatStyles.inputContainer}>
+              <textarea 
+                style={chatStyles.replyInput} 
+                value={replyText} 
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder="Type your reply..."
+              />
+              <button 
+                style={chatStyles.sendBtn} 
+                onClick={handleSave} 
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "..." : <Send size={16} />}
+              </button>
+            </div>
+          ) : (
+            <div style={chatStyles.bubbleRight}>
+              {review.reply}
+              <div style={{ textAlign: 'right', marginTop: '4px' }}>
+                <CheckCircle2 size={12} color="#008060" style={{ opacity: 0.6 }} />
+              </div>
+            </div>
+          )}
+        </div>
+        <div style={{ ...chatStyles.avatar, backgroundColor: '#008060', border: 'none' }}>
+          <Store size={16} color="#fff"/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- REST OF YOUR COMPONENTS & STYLES (NO CHANGES NEEDED BELOW) ---
+
 function InstructionModal({ onClose }) {
   const steps = [
     { title: "Open Theme Editor", desc: "Go to Online Store → Themes → Edit theme" },
@@ -209,9 +316,6 @@ function InstructionModal({ onClose }) {
   );
 }
 
-// --- SUB-COMPONENTS (StatCard, ProductReviewsModal, ReviewChatItem remain the same as your code) ---
-// ... [Keep your existing StatCard, ProductReviewsModal, ReviewChatItem code here] ...
-
 function StatCard({ title, value, icon, subtitle, trend, isRating }) {
   return (
     <div style={styles.statCard}>
@@ -230,115 +334,6 @@ function StatCard({ title, value, icon, subtitle, trend, isRating }) {
   );
 }
 
-function ProductReviewsModal({ product, onClose }) {
-  return (
-    <div style={modalStyles.overlay} onClick={onClose}>
-      <div style={modalStyles.modal} onClick={(e) => e.stopPropagation()}>
-        <div style={modalStyles.header}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={modalStyles.productIcon}><MessageSquare size={20} color="#3b82f6" /></div>
-            <div>
-              <h2 style={modalStyles.productTitle}>{product.productName}</h2>
-              <p style={modalStyles.subTitle}>Messaging History</p>
-            </div>
-          </div>
-          <button onClick={onClose} style={modalStyles.closeBtn}><X size={20}/></button>
-        </div>
-        
-        <div style={modalStyles.scrollArea}>
-          {product.reviews.map((rev) => (
-            <ReviewChatItem key={rev.id} review={rev} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ReviewChatItem({ review }) {
-  const fetcher = useFetcher();
-  // If there is no reply, start in editing mode automatically
-  const [isEditing, setIsEditing] = useState(!review.reply);
-  const [replyText, setReplyText] = useState(review.reply || "");
-
-  // Sync state if the review prop updates (e.g., after a successful save)
-  useEffect(() => {
-    if (review.reply) {
-      setReplyText(review.reply);
-    }
-  }, [review.reply]);
-
-  const handleSave = () => {
-    if (!replyText.trim()) return;
-    fetcher.submit({ reviewId: review.id, reply: replyText }, { method: "POST" });
-    setIsEditing(false);
-  };
-
-  return (
-    <div style={chatStyles.thread}>
-      {/* --- CUSTOMER BUBBLE (Remains same) --- */}
-      <div style={chatStyles.rowLeft}>
-        <div style={chatStyles.avatar}><User size={16} color="#64748b"/></div>
-        <div style={chatStyles.contentWrapper}>
-          <div style={chatStyles.metaLeft}>
-            <span style={chatStyles.name}>{review.author || "Customer"}</span>
-            <span style={chatStyles.time}>{new Date(review.createdAt).toLocaleDateString()}</span>
-          </div>
-          <div style={chatStyles.bubbleLeft}>
-            <div style={chatStyles.starRow}>
-              {[...Array(5)].map((_, i) => <Star key={i} size={10} fill={i < review.rating ? "#f59e0b" : "none"} stroke="#f59e0b" />)}
-            </div>
-            {review.comment}
-          </div>
-        </div>
-      </div>
-
-      {/* --- STORE RESPONSE SECTION --- */}
-      <div style={chatStyles.rowRight}>
-        <div style={chatStyles.contentWrapper}>
-          <div style={chatStyles.metaRight}>
-             {!isEditing && review.reply && (
-              <button onClick={() => setIsEditing(true)} style={chatStyles.editBtn}>
-                <Edit2 size={12}/> Edit Reply
-              </button>
-            )}
-            <span style={{ ...chatStyles.name, color: '#008060' }}>Store Response</span>
-          </div>
-
-          {isEditing ? (
-            <div style={chatStyles.inputContainer}>
-              <textarea 
-                style={chatStyles.replyInput} 
-                value={replyText} 
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Type your reply to this customer..."
-              />
-              <button 
-                style={chatStyles.sendBtn} 
-                onClick={handleSave} 
-                disabled={fetcher.state === "submitting"}
-              >
-                {fetcher.state === "submitting" ? "..." : <Send size={16} />}
-              </button>
-            </div>
-          ) : (
-            <div style={chatStyles.bubbleRight}>
-              {review.reply}
-              <div style={{ textAlign: 'right', marginTop: '4px' }}>
-                <CheckCircle2 size={12} color="#008060" style={{ opacity: 0.6 }} />
-              </div>
-            </div>
-          )}
-        </div>
-        <div style={{ ...chatStyles.avatar, backgroundColor: '#008060', border: 'none' }}>
-          <Store size={16} color="#fff"/>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- UPDATED STYLES ---
 const styles = {
   container: { padding: "40px", backgroundColor: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', sans-serif" },
   headerLayout: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' },
@@ -371,115 +366,20 @@ const modalStyles = {
 };
 
 const chatStyles = {
-  thread: { 
-    display: 'flex', 
-    flexDirection: 'column', 
-    gap: '24px', 
-    marginBottom: '32px',
-    width: '100%' 
-  },
-  rowLeft: { 
-    display: 'flex', 
-    gap: '12px', 
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start' 
-  },
-  rowRight: { 
-    display: 'flex', 
-    gap: '12px', 
-    justifyContent: 'flex-end',
-    alignItems: 'flex-start' 
-  },
-  avatar: { 
-    width: '36px', 
-    height: '36px', 
-    borderRadius: '50%', 
-    backgroundColor: '#fff', 
-    border: '1px solid #e2e8f0', 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    flexShrink: 0 // Prevents avatar from squishing
-  },
-  contentWrapper: {
-    display: 'flex',
-    flexDirection: 'column',
-    maxWidth: '75%', // Reduced slightly to ensure no collisions
-    minWidth: '200px'
-  },
+  thread: { display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '32px', width: '100%' },
+  rowLeft: { display: 'flex', gap: '12px', justifyContent: 'flex-start', alignItems: 'flex-start' },
+  rowRight: { display: 'flex', gap: '12px', justifyContent: 'flex-end', alignItems: 'flex-start' },
+  avatar: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  contentWrapper: { display: 'flex', flexDirection: 'column', maxWidth: '75%', minWidth: '200px' },
   metaLeft: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' },
-  metaRight: { 
-    display: 'flex', 
-    gap: '8px', 
-    alignItems: 'center', 
-    marginBottom: '6px', 
-    justifyContent: 'flex-end' // Changed from row-reverse for cleaner spacing
-  },
+  metaRight: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px', justifyContent: 'flex-end' },
   name: { fontSize: '13px', fontWeight: '700', color: '#1e293b' },
   time: { fontSize: '11px', color: '#94a3b8' },
-  bubbleLeft: { 
-    padding: '12px 16px', 
-    backgroundColor: '#fff', 
-    border: '1px solid #e2e8f0', 
-    borderRadius: '0 16px 16px 16px', 
-    fontSize: '14px', 
-    lineHeight: '1.5', 
-    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-    wordBreak: 'break-word' // Prevents long text from overflowing
-  },
-  bubbleRight: { 
-    padding: '12px 16px', 
-    backgroundColor: '#e6f3f0', 
-    border: '1px solid #00806033', 
-    borderRadius: '16px 0 16px 16px', 
-    fontSize: '14px', 
-    color: '#004d3a', 
-    lineHeight: '1.5',
-    wordBreak: 'break-word'
-  },
+  bubbleLeft: { padding: '12px 16px', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0 16px 16px 16px', fontSize: '14px', lineHeight: '1.5', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', wordBreak: 'break-word' },
+  bubbleRight: { padding: '12px 16px', backgroundColor: '#e6f3f0', border: '1px solid #00806033', borderRadius: '16px 0 16px 16px', fontSize: '14px', color: '#004d3a', lineHeight: '1.5', wordBreak: 'break-word' },
   starRow: { display: 'flex', gap: '2px', marginBottom: '6px' },
-  inputContainer: { 
-    position: 'relative', 
-    width: '100%', // Flexible width
-    marginTop: '4px' 
-  },
-  replyInput: { 
-    width: '100%', 
-    padding: '12px 48px 12px 16px', 
-    borderRadius: '12px', 
-    border: '2px solid #008060', 
-    fontSize: '14px', 
-    outline: 'none', 
-    resize: 'vertical', // Allow user to expand if needed
-    minHeight: '80px', 
-    fontFamily: 'inherit',
-    boxSizing: 'border-box' // Essential for padding + 100% width
-  },
-  sendBtn: { 
-    position: 'absolute', 
-    right: '12px', 
-    bottom: '12px', 
-    backgroundColor: '#008060', 
-    color: '#fff', 
-    border: 'none', 
-    borderRadius: '50%', 
-    width: '32px', 
-    height: '32px', 
-    cursor: 'pointer', 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    transition: 'transform 0.1s ease'
-  },
-  editBtn: { 
-    background: 'none', 
-    border: 'none', 
-    color: '#94a3b8', 
-    fontSize: '11px', 
-    cursor: 'pointer', 
-    fontWeight: '600',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px'
-  }
+  inputContainer: { position: 'relative', width: '100%', marginTop: '4px' },
+  replyInput: { width: '100%', padding: '12px 48px 12px 16px', borderRadius: '12px', border: '2px solid #008060', fontSize: '14px', outline: 'none', resize: 'vertical', minHeight: '80px', fontFamily: 'inherit', boxSizing: 'border-box' },
+  sendBtn: { position: 'absolute', right: '12px', bottom: '12px', backgroundColor: '#008060', color: '#fff', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  editBtn: { background: 'none', border: 'none', color: '#94a3b8', fontSize: '11px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }
 };
