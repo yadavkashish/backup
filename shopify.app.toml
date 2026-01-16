@@ -2,7 +2,7 @@
 
 client_id = "98eccc305b95a11d2b9dbec18a0681d1"
 name = "judgeme"
-application_url = "https://judgme.onrender.com"
+application_url = "https://backup-jet.vercel.app"
 embedded = true
 
 [build]
@@ -31,8 +31,8 @@ scopes = "read_products, write_themes, read_orders, write_customers"
 
 [auth]
 redirect_urls = [
-  "https://judgme.onrender.com/api/auth",
-  "https://judgme.onrender.com/auth/callback"
+  "https://backup-jet.vercel.app/api/auth",
+  "https://backup-jet.vercel.app/auth/callback"
 ]
 
 [pos]
