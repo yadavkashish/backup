@@ -23,20 +23,18 @@ export async function loader({ request }) {
     });
   }
 
-  const reviews = await db.review.findMany({
+const reviews = await db.review.findMany({
     where: {
       shop: shop.replace(/\/$/, ""),
       productId,
       status: "PUBLISHED",
     },
+    // select: { id: true, rating: true, comment: true, author: true, createdAt: true, reply: true }, // Ensure reply is included
     orderBy: { createdAt: "desc" },
   });
 
   return new Response(JSON.stringify(reviews), {
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json",
-    },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 

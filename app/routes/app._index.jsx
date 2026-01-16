@@ -257,8 +257,16 @@ function ProductReviewsModal({ product, onClose }) {
 
 function ReviewChatItem({ review }) {
   const fetcher = useFetcher();
+  // If there is no reply, start in editing mode automatically
   const [isEditing, setIsEditing] = useState(!review.reply);
   const [replyText, setReplyText] = useState(review.reply || "");
+
+  // Sync state if the review prop updates (e.g., after a successful save)
+  useEffect(() => {
+    if (review.reply) {
+      setReplyText(review.reply);
+    }
+  }, [review.reply]);
 
   const handleSave = () => {
     if (!replyText.trim()) return;
@@ -268,9 +276,10 @@ function ReviewChatItem({ review }) {
 
   return (
     <div style={chatStyles.thread}>
+      {/* --- CUSTOMER BUBBLE (Remains same) --- */}
       <div style={chatStyles.rowLeft}>
         <div style={chatStyles.avatar}><User size={16} color="#64748b"/></div>
-        <div style={{ maxWidth: '80%' }}>
+        <div style={chatStyles.contentWrapper}>
           <div style={chatStyles.metaLeft}>
             <span style={chatStyles.name}>{review.author || "Customer"}</span>
             <span style={chatStyles.time}>{new Date(review.createdAt).toLocaleDateString()}</span>
@@ -284,12 +293,13 @@ function ReviewChatItem({ review }) {
         </div>
       </div>
 
+      {/* --- STORE RESPONSE SECTION --- */}
       <div style={chatStyles.rowRight}>
-        <div style={{ maxWidth: '80%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+        <div style={chatStyles.contentWrapper}>
           <div style={chatStyles.metaRight}>
-             {!isEditing && (
+             {!isEditing && review.reply && (
               <button onClick={() => setIsEditing(true)} style={chatStyles.editBtn}>
-                <Edit2 size={12}/> Edit
+                <Edit2 size={12}/> Edit Reply
               </button>
             )}
             <span style={{ ...chatStyles.name, color: '#008060' }}>Store Response</span>
@@ -301,9 +311,13 @@ function ReviewChatItem({ review }) {
                 style={chatStyles.replyInput} 
                 value={replyText} 
                 onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Type your reply..."
+                placeholder="Type your reply to this customer..."
               />
-              <button style={chatStyles.sendBtn} onClick={handleSave} disabled={fetcher.state === "submitting"}>
+              <button 
+                style={chatStyles.sendBtn} 
+                onClick={handleSave} 
+                disabled={fetcher.state === "submitting"}
+              >
                 {fetcher.state === "submitting" ? "..." : <Send size={16} />}
               </button>
             </div>
@@ -316,7 +330,9 @@ function ReviewChatItem({ review }) {
             </div>
           )}
         </div>
-        <div style={{ ...chatStyles.avatar, backgroundColor: '#008060' }}><Store size={16} color="#fff"/></div>
+        <div style={{ ...chatStyles.avatar, backgroundColor: '#008060', border: 'none' }}>
+          <Store size={16} color="#fff"/>
+        </div>
       </div>
     </div>
   );
@@ -355,19 +371,115 @@ const modalStyles = {
 };
 
 const chatStyles = {
-  thread: { display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '40px' },
-  rowLeft: { display: 'flex', gap: '12px', justifyContent: 'flex-start' },
-  rowRight: { display: 'flex', gap: '12px', justifyContent: 'flex-end' },
-  avatar: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  metaLeft: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px' },
-  metaRight: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px', flexDirection: 'row-reverse' },
+  thread: { 
+    display: 'flex', 
+    flexDirection: 'column', 
+    gap: '24px', 
+    marginBottom: '32px',
+    width: '100%' 
+  },
+  rowLeft: { 
+    display: 'flex', 
+    gap: '12px', 
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start' 
+  },
+  rowRight: { 
+    display: 'flex', 
+    gap: '12px', 
+    justifyContent: 'flex-end',
+    alignItems: 'flex-start' 
+  },
+  avatar: { 
+    width: '36px', 
+    height: '36px', 
+    borderRadius: '50%', 
+    backgroundColor: '#fff', 
+    border: '1px solid #e2e8f0', 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    flexShrink: 0 // Prevents avatar from squishing
+  },
+  contentWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    maxWidth: '75%', // Reduced slightly to ensure no collisions
+    minWidth: '200px'
+  },
+  metaLeft: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' },
+  metaRight: { 
+    display: 'flex', 
+    gap: '8px', 
+    alignItems: 'center', 
+    marginBottom: '6px', 
+    justifyContent: 'flex-end' // Changed from row-reverse for cleaner spacing
+  },
   name: { fontSize: '13px', fontWeight: '700', color: '#1e293b' },
   time: { fontSize: '11px', color: '#94a3b8' },
-  bubbleLeft: { padding: '12px 16px', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0 16px 16px 16px', fontSize: '14px', lineHeight: '1.5', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
-  bubbleRight: { padding: '12px 16px', backgroundColor: '#e6f3f0', border: '1px solid #00806033', borderRadius: '16px 0 16px 16px', fontSize: '14px', color: '#004d3a', lineHeight: '1.5' },
-  starRow: { display: 'flex', gap: '2px', marginBottom: '4px' },
-  inputContainer: { position: 'relative', width: '320px' },
-  replyInput: { width: '100%', padding: '12px 45px 12px 16px', borderRadius: '16px', border: '2px solid #008060', fontSize: '14px', outline: 'none', resize: 'none', height: '80px', fontFamily: 'inherit' },
-  sendBtn: { position: 'absolute', right: '10px', bottom: '10px', backgroundColor: '#008060', color: '#fff', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  editBtn: { background: 'none', border: 'none', color: '#94a3b8', fontSize: '11px', cursor: 'pointer', fontWeight: '600' }
+  bubbleLeft: { 
+    padding: '12px 16px', 
+    backgroundColor: '#fff', 
+    border: '1px solid #e2e8f0', 
+    borderRadius: '0 16px 16px 16px', 
+    fontSize: '14px', 
+    lineHeight: '1.5', 
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    wordBreak: 'break-word' // Prevents long text from overflowing
+  },
+  bubbleRight: { 
+    padding: '12px 16px', 
+    backgroundColor: '#e6f3f0', 
+    border: '1px solid #00806033', 
+    borderRadius: '16px 0 16px 16px', 
+    fontSize: '14px', 
+    color: '#004d3a', 
+    lineHeight: '1.5',
+    wordBreak: 'break-word'
+  },
+  starRow: { display: 'flex', gap: '2px', marginBottom: '6px' },
+  inputContainer: { 
+    position: 'relative', 
+    width: '100%', // Flexible width
+    marginTop: '4px' 
+  },
+  replyInput: { 
+    width: '100%', 
+    padding: '12px 48px 12px 16px', 
+    borderRadius: '12px', 
+    border: '2px solid #008060', 
+    fontSize: '14px', 
+    outline: 'none', 
+    resize: 'vertical', // Allow user to expand if needed
+    minHeight: '80px', 
+    fontFamily: 'inherit',
+    boxSizing: 'border-box' // Essential for padding + 100% width
+  },
+  sendBtn: { 
+    position: 'absolute', 
+    right: '12px', 
+    bottom: '12px', 
+    backgroundColor: '#008060', 
+    color: '#fff', 
+    border: 'none', 
+    borderRadius: '50%', 
+    width: '32px', 
+    height: '32px', 
+    cursor: 'pointer', 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    transition: 'transform 0.1s ease'
+  },
+  editBtn: { 
+    background: 'none', 
+    border: 'none', 
+    color: '#94a3b8', 
+    fontSize: '11px', 
+    cursor: 'pointer', 
+    fontWeight: '600',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px'
+  }
 };

@@ -26,158 +26,211 @@ async function initProductReviews() {
 
     const cfg = settingsData.config || {
       starColor: "#f97316",
-      buttonColor: "#2563eb",
+      buttonColor: "#111111",
       fontSize: 14
     };
 
     const style = document.createElement("style");
     style.innerHTML = `
       .jd-wrapper {
+        max-width: 1200px;
+        margin: 60px auto;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #1a1a1a;
+      }
+      .jd-header {
         display: flex;
-        gap: 40px;
-        align-items: flex-start;
-        font-family: Arial, system-ui, sans-serif;
-        font-size: ${cfg.fontSize}px;
-        color: #111;
-        margin: 40px 0;
-      }
-
-      .jd-left { width: 60%; }
-      .jd-right {
-        width: 40%;
-        display: none;
-        border-left: 1px solid #e5e7eb;
-        padding-left: 32px;
-      }
-
-      .jd-title { font-size: 22px; font-weight: 700; margin-bottom: 16px; }
-
-      .jd-review {
-        padding: 24px 0;
-        border-bottom: 1px solid #e5e7eb;
-      }
-
-      .jd-review-header {
-        display: flex;
-        gap: 12px;
+        justify-content: space-between;
         align-items: center;
-        margin-bottom: 6px;
+        margin-bottom: 32px;
+        border-bottom: 1px solid #eeeeee;
+        padding-bottom: 16px;
+      }
+      .jd-title { font-size: 24px; font-weight: 600; margin: 0; }
+
+      .jd-review-item {
+        margin-bottom: 32px;
+        padding-bottom: 32px;
+        border-bottom: 1px solid #f5f5f5;
+      }
+
+      .jd-review-main {
+        display: flex;
+        gap: 16px;
       }
 
       .jd-avatar {
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
-        background: #e5e7eb;
+        background: #f0f0f0;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
+        font-weight: 600;
+        font-size: 14px;
+        flex-shrink: 0;
+        color: #666;
       }
 
-      .jd-author { font-weight: 700; }
+      .jd-content { flex: 1; }
 
+      .jd-author-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+      .jd-author-name { font-weight: 600; font-size: 15px; }
+      
       .jd-stars {
         color: ${cfg.starColor};
+        letter-spacing: 2px;
         font-size: 14px;
-        margin: 4px 0;
-      }
-
-      .jd-meta {
-        font-size: 12px;
-        color: #6b7280;
         margin-bottom: 8px;
       }
 
-      .jd-write-btn {
-        margin: 24px 0;
-        padding: 12px 18px;
-        border-radius: 999px;
-        border: 1px solid #111;
-        background: #fff;
-        cursor: pointer;
+      .jd-meta-date {
+        font-size: 12px;
+        color: #888;
+        margin-bottom: 12px;
+      }
+
+      .jd-text {
+        font-size: 15px;
+        line-height: 1.6;
+        color: #333;
+      }
+
+      /* --- Threaded Reply UI --- */
+      .jd-reply-container {
+        position: relative;
+        margin-left: 60px; /* Aligns with the review text start */
+        margin-top: 20px;
+        padding-left: 24px;
+      }
+
+      /* The vertical thread line */
+      .jd-reply-container::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: -10px;
+        bottom: 10px;
+        width: 2px;
+        background: #eeeeee;
+        border-radius: 2px;
+      }
+
+      .jd-reply-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
         font-weight: 600;
+        color: #111;
+        margin-bottom: 6px;
       }
 
-      .jd-input {
-        width: 100%;
-        padding: 10px;
-        margin: 8px 0 16px;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        box-sizing: border-box;
-      }
-
-      .jd-submit {
-        width: 100%;
-        padding: 12px;
-        background: ${cfg.buttonColor};
+      .jd-reply-badge {
+        background: #111;
         color: #fff;
-        border: none;
-        border-radius: 8px;
-        font-weight: 700;
-        cursor: pointer;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-transform: uppercase;
       }
 
-      .jd-star-input span {
-        font-size: 28px;
+      .jd-reply-text {
+        font-size: 14px;
+        line-height: 1.5;
+        color: #555;
+        font-style: normal;
+      }
+
+      .jd-write-btn {
+        padding: 12px 24px;
+        border-radius: 4px;
+        border: 1px solid #111;
+        background: #111;
+        color: #fff;
         cursor: pointer;
-        color: ${cfg.starColor};
-        opacity: 0.3;
+        font-weight: 500;
+        transition: opacity 0.2s;
+      }
+      .jd-write-btn:hover { opacity: 0.8; }
+
+      .jd-form-drawer {
+        display: none;
+        background: #fcfcfc;
+        padding: 24px;
+        border-radius: 8px;
+        border: 1px solid #eee;
+        margin-bottom: 40px;
       }
     `;
     document.head.appendChild(style);
 
     root.innerHTML = `
       <div class="jd-wrapper">
-        <div class="jd-left">
-          <div class="jd-title">Customer reviews</div>
-          <button id="openFormBtn" class="jd-write-btn">Write a product review</button>
-
-          <div id="reviews-container">
-            ${reviewsData.length === 0 ? `<p>No reviews yet.</p>` : reviewsData.map(r => `
-              <div class="jd-review">
-                <div class="jd-review-header">
-                  <div class="jd-avatar">${r.author.charAt(0).toUpperCase()}</div>
-                  <div class="jd-author">${r.author}</div>
-                </div>
-                <div class="jd-stars">
-                  ${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}
-                </div>
-                <div class="jd-meta">
-                  Reviewed on ${new Date(r.createdAt).toLocaleDateString()}
-                  
-                </div>
-                <div>${r.comment}</div>
-              </div>
-            `).join("")}
-          </div>
+        <div class="jd-header">
+          <h2 class="jd-title">Customer Reviews</h2>
+          <button id="openFormBtn" class="jd-write-btn">Write a Review</button>
         </div>
 
-        <div class="jd-right" id="reviewForm">
-          <h3>Review this product</h3>
-          <label>Your Rating *</label>
-          <div class="jd-star-input" id="starInput">
-            ${[1,2,3,4,5].map(i => `<span data-v="${i}">★</span>`).join("")}
+        <div id="reviewForm" class="jd-form-drawer">
+          <h3 style="margin-top:0">Share your thoughts</h3>
+          <div class="jd-star-input" id="starInput" style="margin-bottom:15px">
+            ${[1,2,3,4,5].map(i => `<span data-v="${i}" style="font-size:30px; cursor:pointer">★</span>`).join("")}
           </div>
-          <label>Name</label>
-          <input id="author-field" class="jd-input" placeholder="Your name">
-          <label>Write your review *</label>
-          <textarea id="comment-field" class="jd-input" style="height:120px"></textarea>
-          <button id="submitBtn" class="jd-submit">Submit Review</button>
-          <p id="form-msg" style="margin-top:10px; text-align:center;"></p>
+          <input id="author-field" class="jd-input" placeholder="Display Name (e.g. Jane D.)" style="display:block; width:100%; padding:12px; margin-bottom:12px; border:1px solid #ddd">
+          <textarea id="comment-field" class="jd-input" placeholder="What did you like or dislike?" style="display:block; width:100%; height:100px; padding:12px; border:1px solid #ddd"></textarea>
+          <button id="submitBtn" class="jd-write-btn" style="margin-top:12px; width:100%">Post Review</button>
+          <p id="form-msg" style="text-align:center; margin-top:12px"></p>
+        </div>
+
+        <div id="reviews-container">
+          ${reviewsData.length === 0 ? `<p style="color:#666">Be the first to review this product.</p>` : reviewsData.map(r => `
+            <div class="jd-review-item">
+              <div class="jd-review-main">
+                <div class="jd-avatar">${r.author.charAt(0).toUpperCase()}</div>
+                <div class="jd-content">
+                  <div class="jd-author-row">
+                    <span class="jd-author-name">${r.author}</span>
+                  </div>
+                  <div class="jd-stars">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</div>
+                  <div class="jd-meta-date">Published ${new Date(r.createdAt).toLocaleDateString()}</div>
+                  <div class="jd-text">${r.comment}</div>
+                  
+                  ${r.reply ? `
+                    <div class="jd-reply-container">
+                      <div class="jd-reply-header">
+                        <span class="jd-reply-badge">Store</span>
+                        Official Response
+                      </div>
+                      <div class="jd-reply-text">${r.reply}</div>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          `).join("")}
         </div>
       </div>
     `;
 
+    // --- Interaction Logic ---
     document.getElementById("openFormBtn").onclick = () => {
-      document.getElementById("reviewForm").style.display = "block";
+      const form = document.getElementById("reviewForm");
+      form.style.display = form.style.display === "block" ? "none" : "block";
     };
 
     let currentRating = 5;
     const stars = document.querySelectorAll("#starInput span");
     const updateStars = (val) => {
-      stars.forEach(s => s.style.opacity = s.dataset.v <= val ? "1" : "0.3");
+      stars.forEach(s => {
+        s.style.color = s.dataset.v <= val ? cfg.starColor : "#ddd";
+      });
     };
 
     stars.forEach(star => {
@@ -194,13 +247,11 @@ async function initProductReviews() {
       const msg = document.getElementById("form-msg");
 
       if (!comment) {
-        msg.style.color = "red";
-        msg.innerText = "Please write a review.";
+        msg.innerHTML = "Please add a comment.";
         return;
       }
 
-      msg.style.color = "black";
-      msg.innerText = "Submitting...";
+      msg.innerHTML = "Submitting...";
 
       try {
         const res = await fetch(`${API}/api/public/reviews`, {
@@ -215,15 +266,13 @@ async function initProductReviews() {
         });
 
         if (res.ok) {
-          msg.style.color = "green";
-          msg.innerText = "Thanks for your review!";
+          msg.innerHTML = "Success! Your review is live.";
           setTimeout(() => initProductReviews(), 1500);
         } else {
           throw new Error();
         }
       } catch {
-        msg.style.color = "red";
-        msg.innerText = "Error submitting review.";
+        msg.innerHTML = "Error submitting review.";
       }
     };
 
@@ -234,18 +283,3 @@ async function initProductReviews() {
 initProductReviews();
 </script>
 {% endif %}
-
-{% schema %}
-{
-  "name": "Product Reviews",
-  "target": "section",
-  "settings": [
-    {
-      "type": "checkbox",
-      "id": "enable",
-      "label": "Enable reviews",
-      "default": true
-    }
-  ]
-}
-{% endschema %}
